@@ -1,0 +1,159 @@
+name: orchestrai
+
+services:
+  openwebui:
+    image: ghcr.io/open-webui/open-webui:latest
+    container_name: orchestrai-openwebui
+    restart: unless-stopped
+    networks: [bridgecade_web]
+    environment:
+      WEBUI_NAME: Synthphony OpenWebUI
+      OLLAMA_BASE_URL: http://orchestrai-ollama:11434
+    volumes:
+      - ./openwebui:/app/backend/data
+    labels:
+      caddy: "ollama.${BASE_DOMAIN}"
+      caddy.reverse_proxy: "{{upstreams 8080}}"
+      caddy.tls: "/certs/ollama.${BASE_DOMAIN}.crt /certs/ollama.${BASE_DOMAIN}.key"
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8080/health >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    depends_on:
+      ollama:
+        condition: service_healthy
+
+  windmill-db:
+    image: postgres:16-alpine
+    container_name: orchestrai-windmill-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: windmill
+      POSTGRES_PASSWORD: "${WINDMILL_DB_PASSWORD}"
+      POSTGRES_DB: windmill
+    volumes:
+      - ./windmill/db:/var/lib/postgresql/data
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U windmill -d windmill"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    stop_grace_period: 60s
+
+  windmill:
+    image: ghcr.io/windmill-labs/windmill:main
+    container_name: orchestrai-windmill
+    restart: unless-stopped
+    depends_on:
+      windmill-db:
+        condition: service_healthy
+    networks:
+      - default
+      - bridgecade_web
+    environment:
+      DATABASE_URL: "postgres://windmill:${WINDMILL_DB_PASSWORD}@windmill-db:5432/windmill"
+      BASE_URL: https://windmill.${BASE_DOMAIN}
+      RUST_LOG: info
+      WM_CONFIG_PATH: /app/data
+      WM_ENCRYPTION_KEY: "${WM_ENCRYPTION_KEY}"
+      WM_JWT_SECRET: "${WM_JWT_SECRET}"
+    volumes:
+      - ./windmill/data:/app/data
+    labels:
+      caddy: "windmill.${BASE_DOMAIN}"
+      caddy.reverse_proxy: "{{upstreams 8000}}"
+      caddy.tls: "/certs/windmill.${BASE_DOMAIN}.crt /certs/windmill.${BASE_DOMAIN}.key"
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/api/version >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    stop_grace_period: 60s
+
+  agentzero:
+    build:
+      context: .
+      dockerfile: Dockerfile.agentzero-custom
+    image: agentzero-custom:latest
+    container_name: orchestrai-agentzero
+    restart: unless-stopped
+    networks: [bridgecade_web]
+    environment:
+      WINDMILL_BASE_URL: https://windmill.${BASE_DOMAIN}
+      WINDMILL_URL: http://orchestrai-windmill:8000
+      ALLOWED_ORIGINS: "https://agentzero.${BASE_DOMAIN},http://localhost:7860"
+      SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
+      REQUESTS_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
+    volumes:
+      - ./agentzero_data:/a0
+      - ./agentzero_config:/app/config
+      - ./wmill_config:/root/.config/wmill
+    labels:
+      caddy: "agentzero.${BASE_DOMAIN}"
+      caddy.reverse_proxy: "{{upstreams 80}}"
+      caddy.tls: "/certs/agentzero.${BASE_DOMAIN}.crt /certs/agentzero.${BASE_DOMAIN}.key"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent --max-time 5 http://localhost/ >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: orchestrai-ollama
+    restart: unless-stopped
+    networks: [bridgecade_web]
+    environment:
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    volumes:
+      - ./ollama:/root/.ollama
+    # Raw Ollama API is internal-only (OpenWebUI connects via Docker network)
+    # No Caddy labels = not exposed to users (they use ollama.synth.home.arpa which is OpenWebUI)
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+    healthcheck:
+      test: ["CMD-SHELL", "ollama --version >/dev/null 2>&1 && ollama ps >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    stop_grace_period: 120s
+    # GPU enablement (requires NVIDIA Container Toolkit):
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: "nvidia"
+    #           capabilities: ["gpu"]
+
+networks:
+  bridgecade_web:
+    external: true

@@ -1,0 +1,29 @@
+name: orchestrai-test
+
+services:
+  agentzero-test:
+    image: agent0ai/agent-zero:latest
+    container_name: agentzero-test
+    hostname: agentzero-test
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8081:80"
+    volumes:
+      - ./agentzero_test_data:/a0
+    networks:
+      - bridgecade_web
+    environment:
+      - BASE_DOMAIN=synth.home.arpa
+    labels:
+      caddy: "agentzero-test.${BASE_DOMAIN}"
+      caddy.reverse_proxy: "{{upstreams 80}}"
+      caddy.tls: "/certs/agentzero-test.${BASE_DOMAIN}.crt /certs/agentzero-test.${BASE_DOMAIN}.key"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+networks:
+  bridgecade_web:
+    external: true

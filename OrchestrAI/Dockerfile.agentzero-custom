@@ -1,0 +1,24 @@
+# Custom AgentZero image with Windmill CLI baked in
+FROM agent0ai/agent-zero:latest
+
+# Install dependencies and Windmill CLI
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        curl \
+        ca-certificates \
+        gnupg && \
+    # Install Node.js LTS
+    curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - && \
+    apt-get install -y nodejs && \
+    # Install Windmill CLI globally
+    npm install -g windmill-cli && \
+    # Cleanup
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Set default Windmill URL (internal to Docker network)
+ENV WINDMILL_URL=http://windmill:8000
+
+# Health check
+HEALTHCHECK --interval=10s --timeout=5s --retries=10 \
+    CMD curl --fail --silent --max-time 5 http://localhost/ >/dev/null 2>&1 || exit 1

@@ -1,0 +1,729 @@
+================================================================================
+  SYNTHPHONY v6 — First-Time Setup & Operations Guide
+  Generated: 2026-02-05
+================================================================================
+
+Table of Contents
+─────────────────
+  1. Overview
+  2. Prerequisites
+  3. Automated Setup (Zero-Touch)
+  4. Post-Startup Manual Steps (One-Time Only)
+  5. Service URLs & Default Credentials
+  6. WireGuard VPN Setup (Remote Access)
+  7. Trusting the mkcert CA (HTTPS Without Warnings)
+  8. Day-to-Day Operations
+  9. Troubleshooting
+ 10. Backups & Restore
+ 11. Updating Services
+ 12. Architecture Reference
+
+
+================================================================================
+ 1. OVERVIEW
+================================================================================
+
+Synthphony is a single-host homelab platform with four planes:
+
+  • BridgeCade  — Ingress (Caddy), DNS (Pi-hole), VPN (WireGuard), auto-TLS
+  • MetronOmni  — Monitoring: Portainer, Uptime Kuma, Netdata
+  • OrchestrAI  — AI stack: Ollama, OpenWebUI, Windmill, AgentZero
+  • MYestro     — Personal cloud: Nextcloud, Solidtime
+
+All services are accessible via *.synth.home.arpa over HTTPS on your LAN/VPN.
+BridgeCade handles all ingress — app stacks never expose ports to the network.
+
+
+================================================================================
+ 2. PREREQUISITES
+================================================================================
+
+Hardware
+────────
+  • Linux host (Ubuntu 22.04+, Debian 12+, or similar)
+  • Minimum 16 GB RAM (32 GB recommended for AI workloads)
+  • SSD recommended for databases and model storage
+  • (Optional) NVIDIA GPU for Ollama acceleration
+
+Software (installed automatically by setup scripts)
+───────────────────────────────────────────────────
+  • Docker Engine + Docker Compose v2
+  • (Optional) NVIDIA Container Toolkit (for GPU)
+
+Network
+───────
+  • Static or DHCP-reserved IP for the host (e.g., 192.168.178.77)
+  • Router access to change DHCP DNS settings
+  • (Optional) Port forwarding for WireGuard UDP port (default 51820)
+
+
+================================================================================
+ 3. AUTOMATED SETUP (ZERO-TOUCH)
+================================================================================
+
+Step 1: Copy Synthphony to /opt/Synthphony
+──────────────────────────────────────────
+  sudo mkdir -p /opt/Synthphony
+  sudo cp -r ./BridgeCade ./MetronOmni ./OrchestrAI ./MYestro ./scripts ./backups /opt/Synthphony/
+  sudo chown -R $USER:$USER /opt/Synthphony
+  cd /opt/Synthphony
+
+Step 2: Run setup-all.sh (one time)
+───────────────────────────────────
+  ./scripts/setup-all.sh
+
+  This automatically:
+    ✓ Installs Docker (if missing)
+    ✓ Adds your user to the docker group
+    ✓ Creates the bridgecade_web Docker network
+    ✓ Detects LAN IP, subnet, and WireGuard defaults
+    ✓ Resolves port 53 conflicts (systemd-resolved)
+    ✓ Generates all secrets and passwords
+    ✓ Creates .env files from .env.example templates
+    ✓ Creates all data directories with correct permissions
+    ✓ Builds custom Docker images (AgentZero, cert-issuer, dns-registrar)
+
+  ⚠ If prompted about Docker group changes:
+    → Log out and log back in, then continue to Step 3.
+
+Step 3: Start everything
+────────────────────────
+  ./scripts/start-all.sh
+
+  This starts stacks in order:
+    1. BridgeCade  (infrastructure first — Caddy, Pi-hole, WireGuard)
+    2. MetronOmni  (monitoring)
+    3. MYestro     (personal cloud)
+    4. OrchestrAI  (AI stack)
+
+  Each stack retries up to 3 times and runs health checks.
+
+Step 4: Verify
+──────────────
+  docker ps
+
+  You should see containers for all services running.
+
+
+================================================================================
+ 4. POST-STARTUP MANUAL STEPS (ONE-TIME ONLY)
+================================================================================
+
+These steps CANNOT be automated — they require access to your router,
+browser, or physical devices.
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Step 1: POINT DNS TO PI-HOLE                                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                           │
+│ Option A: Router-wide (recommended)                                       │
+│   1. Log into your router admin panel                                     │
+│   2. Find DHCP / DNS settings                                             │
+│   3. Set primary DNS to your host IP (e.g., 192.168.178.77)               │
+│   4. Remove or set secondary DNS to 1.1.1.1 (fallback)                    │
+│   5. Save and reboot router                                               │
+│   6. Reconnect devices or renew DHCP leases                               │
+│                                                                           │
+│ Option B: Single device (for testing)                                     │
+│   • Set your computer's DNS manually to 192.168.178.77                    │
+│   • On Linux: edit /etc/resolv.conf or use NetworkManager                 │
+│   • On macOS: System Preferences → Network → DNS                         │
+│   • On Windows: Network adapter → IPv4 → DNS                             │
+│                                                                           │
+│ Verify:                                                                   │
+│   dig nextcloud.synth.home.arpa                                           │
+│   → Should return your host IP (e.g., 192.168.178.77)                     │
+│                                                                           │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Step 2: TRUST THE MKCERT CA (HTTPS WITHOUT WARNINGS)                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                           │
+│ Synthphony uses mkcert to generate trusted HTTPS certificates.            │
+│ To avoid browser "Not Secure" warnings, install the root CA:              │
+│                                                                           │
+│ The CA certificate is at:                                                 │
+│   /opt/Synthphony/BridgeCade/mkcert-ca/rootCA.pem                         │
+│                                                                           │
+│ On Linux (host machine):                                                  │
+│   sudo cp /opt/Synthphony/BridgeCade/mkcert-ca/rootCA.pem \              │
+│     /usr/local/share/ca-certificates/synthphony-ca.crt                    │
+│   sudo update-ca-certificates                                             │
+│                                                                           │
+│ On macOS:                                                                 │
+│   1. Copy rootCA.pem to your Mac                                          │
+│   2. Double-click → Keychain Access opens                                 │
+│   3. Find "mkcert" cert → Get Info → Trust → Always Trust                 │
+│                                                                           │
+│ On Windows:                                                               │
+│   1. Copy rootCA.pem, rename to rootCA.crt                                │
+│   2. Double-click → Install Certificate                                   │
+│   3. Choose "Local Machine" → "Trusted Root Certification Authorities"    │
+│                                                                           │
+│ On iOS:                                                                   │
+│   1. Email or AirDrop rootCA.pem to your device                           │
+│   2. Settings → Profile Downloaded → Install                              │
+│   3. Settings → General → About → Certificate Trust → Enable              │
+│                                                                           │
+│ On Android:                                                               │
+│   1. Copy rootCA.pem to device                                            │
+│   2. Settings → Security → Install certificate → CA certificate           │
+│                                                                           │
+│ Note: The CA is generated on first BridgeCade start by cert-issuer.       │
+│ If the file doesn't exist yet, wait a minute and check again.             │
+│                                                                           │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Step 3: CREATE ADMIN ACCOUNTS (first visit to each service)               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                           │
+│ Visit each service URL and complete initial setup:                        │
+│                                                                           │
+│ Pi-hole (pre-configured):                                                 │
+│   URL:      https://pihole.synth.home.arpa/admin                          │
+│   Password: cat /opt/Synthphony/BridgeCade/secrets/pihole_admin_password.txt│
+│                                                                           │
+│ Portainer (create on first visit):                                        │
+│   URL: https://portainer.synth.home.arpa                                  │
+│   → Create admin username and password                                    │
+│   ⚠ Must visit within 5 minutes of first start or it locks out!          │
+│                                                                           │
+│ Uptime Kuma (create on first visit):                                      │
+│   URL: https://status.synth.home.arpa                                     │
+│   → Create admin username and password                                    │
+│                                                                           │
+│ Netdata (no login required):                                              │
+│   URL: https://netdata.synth.home.arpa                                    │
+│   → Dashboard available immediately                                       │
+│                                                                           │
+│ Nextcloud (pre-configured):                                               │
+│   URL:      https://nextcloud.synth.home.arpa                             │
+│   Username: admin                                                         │
+│   Password: grep NEXTCLOUD_ADMIN_PASSWORD /opt/Synthphony/MYestro/.env    │
+│                                                                           │
+│ OpenWebUI (create on first visit):                                        │
+│   URL: https://openwebui.synth.home.arpa                                  │
+│   → Create admin account (first user becomes admin)                       │
+│                                                                           │
+│ Windmill (default credentials):                                           │
+│   URL:      https://windmill.synth.home.arpa                              │
+│   Email:    admin@windmill.dev                                            │
+│   Password: changeme                                                      │
+│   → Change password immediately after first login!                        │
+│                                                                           │
+│ AgentZero:                                                                │
+│   URL: https://agentzero.synth.home.arpa                                  │
+│   → Depends on your AgentZero configuration                               │
+│                                                                           │
+│ Solidtime:                                                                │
+│   URL: https://solidtime.synth.home.arpa                                  │
+│   → Create admin on first visit                                           │
+│                                                                           │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Step 4: CONFIGURE WIREGUARD VPN (for remote access)                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                           │
+│ Skip this if you only need LAN access.                                    │
+│                                                                           │
+│ 1. Port forwarding (router):                                              │
+│    Forward UDP port 51820 to your host IP (192.168.178.77)                │
+│                                                                           │
+│ 2. Set WG_SERVERURL in .env:                                              │
+│    Edit /opt/Synthphony/BridgeCade/.env                                   │
+│    Set WG_SERVERURL to your public IP or dynamic DNS hostname             │
+│                                                                           │
+│ 3. Export peer configs:                                                   │
+│    Peer QR codes and configs are at:                                      │
+│      /opt/Synthphony/BridgeCade/wireguard/peer_<name>/                    │
+│                                                                           │
+│    For QR code (scan with WireGuard mobile app):                          │
+│      docker exec bridgecade-wireguard cat /config/peer_laptop/peer_laptop.png│
+│      # Or copy the .conf file directly                                    │
+│                                                                           │
+│ 4. Install WireGuard client:                                              │
+│    • iOS/Android: WireGuard app from App Store / Play Store               │
+│    • macOS/Windows: https://www.wireguard.com/install/                    │
+│    • Linux: sudo apt install wireguard                                    │
+│                                                                           │
+│ 5. Import the peer config and connect.                                    │
+│                                                                           │
+│ 6. Verify split-tunnel:                                                   │
+│    • *.synth.home.arpa resolves and loads → VPN working                   │
+│    • https://ifconfig.me shows your local ISP IP → split-tunnel working   │
+│                                                                           │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+================================================================================
+ 5. SERVICE URLS & DEFAULT CREDENTIALS
+================================================================================
+
+┌──────────────┬──────────────────────────────────────┬────────────────────────┐
+│ Service      │ URL                                  │ Credentials            │
+├──────────────┼──────────────────────────────────────┼────────────────────────┤
+│ Pi-hole      │ https://pihole.synth.home.arpa/admin  │ secrets/ file          │
+│ Portainer    │ https://portainer.synth.home.arpa     │ Create on first visit  │
+│ Uptime Kuma  │ https://status.synth.home.arpa        │ Create on first visit  │
+│ Netdata      │ https://netdata.synth.home.arpa       │ No login               │
+│ Nextcloud    │ https://nextcloud.synth.home.arpa     │ admin / see .env       │
+│ Solidtime    │ https://solidtime.synth.home.arpa     │ Create on first visit  │
+│ OpenWebUI    │ https://openwebui.synth.home.arpa     │ Create on first visit  │
+│ Windmill     │ https://windmill.synth.home.arpa      │ admin@windmill.dev     │
+│ AgentZero    │ https://agentzero.synth.home.arpa     │ Per your config        │
+│ Ollama API   │ https://ollama.synth.home.arpa        │ No auth                │
+└──────────────┴──────────────────────────────────────┴────────────────────────┘
+
+
+================================================================================
+ 6. WIREGUARD VPN SETUP (REMOTE ACCESS)
+================================================================================
+
+See Step 4 in Section 4 above for complete instructions.
+
+Default WireGuard Configuration:
+  • Server port:    51820/udp
+  • Subnet:         10.66.66.0/24
+  • Server IP:      10.66.66.1
+  • Split-tunnel:   YES (only LAN + WG traffic routed through VPN)
+  • Peer DNS:       Your host LAN IP (Pi-hole)
+  • Peers:          Defined in BridgeCade/.env (WG_PEERS=laptop,phone)
+
+
+================================================================================
+ 7. TRUSTING THE MKCERT CA
+================================================================================
+
+See Step 2 in Section 4 above for per-platform instructions.
+
+CA file location: /opt/Synthphony/BridgeCade/mkcert-ca/rootCA.pem
+
+Without installing the CA, browsers will show security warnings but
+services will still work if you click "Accept Risk" / "Continue".
+
+
+================================================================================
+ 8. DAY-TO-DAY OPERATIONS
+================================================================================
+
+Start all stacks:
+  cd /opt/Synthphony
+  ./scripts/start-all.sh
+
+Stop all stacks:
+  cd /opt/Synthphony
+  ./scripts/stop-all.sh
+
+Start/stop individual stack:
+  cd /opt/Synthphony/BridgeCade
+  ./scripts/start.sh
+  docker compose down
+
+Check running containers:
+  docker ps
+
+Check specific stack:
+  cd /opt/Synthphony/<StackName>
+  docker compose ps
+  docker compose logs -f <service-name>
+
+View passwords/secrets:
+  cat /opt/Synthphony/BridgeCade/secrets/pihole_admin_password.txt
+  cat /opt/Synthphony/OrchestrAI/secrets/windmill_db_password.txt
+  cat /opt/Synthphony/MYestro/secrets/nextcloud_db_password.txt
+  grep NEXTCLOUD_ADMIN_PASSWORD /opt/Synthphony/MYestro/.env
+
+
+================================================================================
+ 9. TROUBLESHOOTING
+================================================================================
+
+Problem: Internet disappears after starting BridgeCade
+──────────────────────────────────────────────────────
+  Cause:  DNS now points to Pi-hole, which may not be ready yet.
+  Fix:    Wait 30 seconds for Pi-hole to start, or temporarily:
+          echo "nameserver 1.1.1.1" | sudo tee /etc/resolv.conf
+
+Problem: "Not Secure" / certificate warnings in browser
+──────────────────────────────────────────────────────
+  Cause:  mkcert CA not trusted on your device.
+  Fix:    Install rootCA.pem (see Section 7).
+
+Problem: Can't reach *.synth.home.arpa
+──────────────────────────────────────
+  Check 1: Is Pi-hole running?
+           docker ps | grep pihole
+  Check 2: Is DNS pointing to Pi-hole?
+           dig nextcloud.synth.home.arpa @192.168.178.77
+  Check 3: Is Caddy running?
+           docker ps | grep caddy
+           docker logs bridgecade-caddy
+  Check 4: Are cert-issuer and dns-registrar running?
+           docker ps | grep bridgecade-cert
+           docker ps | grep bridgecade-dns
+           docker logs bridgecade-cert-issuer
+           docker logs bridgecade-dns-registrar
+
+Problem: Port 53 already in use
+───────────────────────────────
+  Cause:  systemd-resolved stub listener.
+  Fix:    setup.sh handles this automatically (prompts Y to fix).
+  Manual: sudo sed -i 's/#DNSStubListener=yes/DNSStubListener=no/' \
+            /etc/systemd/resolved.conf
+          sudo systemctl restart systemd-resolved
+
+Problem: Docker image pull fails ("not found")
+─────────────────────────────────────────────
+  Cause:  Stale or incorrect image tag in compose.yaml.
+  Fix:    Check Docker Hub for current tags and update compose.yaml.
+
+Problem: Container keeps restarting
+──────────────────────────────────
+  Check:  docker logs <container-name>
+          docker inspect <container-name> | grep -A5 State
+
+Problem: Portainer locked out (took too long on first visit)
+───────────────────────────────────────────────────────────
+  Fix:    docker compose -f /opt/Synthphony/MetronOmni/compose.yaml down
+          rm -rf /opt/Synthphony/MetronOmni/portainer-data
+          docker compose -f /opt/Synthphony/MetronOmni/compose.yaml up -d
+          → Visit immediately within 5 minutes
+
+Useful diagnostic commands:
+  docker ps -a                          # all containers
+  docker network ls                     # all networks
+  docker network inspect bridgecade_web # ingress network
+  sudo ss -tlnp | grep -E ':80|:443|:53' # port usage
+  docker system df                      # disk usage
+
+
+================================================================================
+ 10. BACKUPS & RESTORE
+================================================================================
+
+What to back up:
+  • /opt/Synthphony/BridgeCade/mkcert-ca/     (CA — critical)
+  • /opt/Synthphony/BridgeCade/certs/          (leaf certificates)
+  • /opt/Synthphony/BridgeCade/wireguard/      (VPN keys & peer configs)
+  • /opt/Synthphony/BridgeCade/pihole/         (Pi-hole state)
+  • /opt/Synthphony/MYestro/nextcloud/         (Nextcloud data + DB)
+  • /opt/Synthphony/OrchestrAI/windmill/       (Windmill data + DB)
+  • /opt/Synthphony/OrchestrAI/ollama/         (AI models — optional, large)
+  • All .env and secrets/ files
+
+Simple backup script:
+  BACKUP_DIR="/opt/Synthphony/backups/$(date +%F)"
+  mkdir -p "$BACKUP_DIR"
+
+  # Database dumps (while running)
+  docker exec myestro-nextcloud-db mysqldump -unextcloud \
+    -p"$(grep NEXTCLOUD_DB_PASSWORD /opt/Synthphony/MYestro/.env | cut -d= -f2)" \
+    nextcloud > "$BACKUP_DIR/nextcloud.sql"
+
+  docker exec orchestrai-windmill-db pg_dump -U windmill -d windmill \
+    > "$BACKUP_DIR/windmill.sql"
+
+  # File backups
+  tar czf "$BACKUP_DIR/configs.tar.gz" \
+    /opt/Synthphony/BridgeCade/mkcert-ca \
+    /opt/Synthphony/BridgeCade/certs \
+    /opt/Synthphony/BridgeCade/wireguard \
+    /opt/Synthphony/BridgeCade/pihole \
+    /opt/Synthphony/BridgeCade/secrets \
+    /opt/Synthphony/MYestro/secrets \
+    /opt/Synthphony/OrchestrAI/secrets \
+    /opt/Synthphony/*/.env
+
+Restore:
+  1. Stop all stacks: ./scripts/stop-all.sh
+  2. Restore files from tar archives
+  3. Import SQL dumps into fresh database containers
+  4. Start all stacks: ./scripts/start-all.sh
+
+
+================================================================================
+ 11. UPDATING SERVICES
+================================================================================
+
+Update a single stack:
+  cd /opt/Synthphony/<StackName>
+  # Edit compose.yaml with new image tags
+  docker compose pull
+  docker compose up -d
+
+Update all stacks:
+  cd /opt/Synthphony
+  ./scripts/stop-all.sh
+  # Update image tags in compose.yaml files
+  ./scripts/start-all.sh
+
+Recommended update order:
+  1. MYestro (lowest risk)
+  2. MetronOmni
+  3. OrchestrAI
+  4. BridgeCade (last — infrastructure)
+
+⚠ Always back up before updating!
+⚠ Expect brief downtime per service (single replica, no rolling updates).
+
+
+================================================================================
+ 12. ARCHITECTURE REFERENCE
+================================================================================
+
+Directory Structure:
+  /opt/Synthphony/
+  ├── scripts/              Global orchestration
+  │   ├── setup-all.sh      Run all setup scripts
+  │   ├── start-all.sh      Start all stacks in order
+  │   └── stop-all.sh       Stop all stacks in reverse order
+  ├── BridgeCade/           Infrastructure plane
+  │   ├── compose.yaml      Caddy, Pi-hole, WireGuard, cert-issuer, dns-registrar
+  │   ├── .env.example
+  │   ├── scripts/           setup.sh, start.sh
+  │   ├── cert-issuer/       Auto-TLS via mkcert (Dockerfile + issuer.py)
+  │   ├── dns-registrar/     Auto-DNS via Pi-hole (Dockerfile + registrar.py)
+  │   ├── certs/             Generated TLS certificates
+  │   ├── mkcert-ca/         mkcert CA persistence
+  │   ├── pihole/            Pi-hole state
+  │   ├── wireguard/         WireGuard keys and peer configs
+  │   └── secrets/           Pi-hole admin password
+  ├── MetronOmni/           Monitoring plane
+  │   ├── compose.yaml      Portainer, Uptime Kuma, Netdata
+  │   ├── .env.example
+  │   └── scripts/           setup.sh, start.sh
+  ├── OrchestrAI/           AI plane
+  │   ├── compose.yaml      Ollama, OpenWebUI, Windmill, AgentZero
+  │   ├── Dockerfile.agentzero-custom
+  │   ├── .env.example
+  │   ├── scripts/           setup.sh, start.sh
+  │   └── secrets/           Windmill DB password
+  ├── MYestro/              Personal cloud plane
+  │   ├── compose.yaml      Nextcloud (MariaDB + Apache + cron), Solidtime
+  │   ├── .env.example
+  │   ├── scripts/           setup.sh, start.sh
+  │   └── secrets/           Nextcloud DB passwords
+  └── backups/              Backup storage
+
+Shared Docker Network:
+  bridgecade_web            All ingress-exposed services connect here.
+                            Caddy discovers services via Docker labels.
+
+Domain: synth.home.arpa
+  All services are *.synth.home.arpa, resolved by Pi-hole,
+  TLS-terminated by Caddy with mkcert certificates.
+
+Ports exposed on host:
+  80/tcp    — Caddy HTTP (redirects to HTTPS)
+  443/tcp   — Caddy HTTPS (all services)
+  53/tcp+udp — Pi-hole DNS
+  51820/udp — WireGuard VPN
+
+
+================================================================================
+  Quick Reference Card
+================================================================================
+
+  First-time setup:    ./scripts/setup-all.sh && ./scripts/start-all.sh
+  Daily start:         ./scripts/start-all.sh
+  Daily stop:          ./scripts/stop-all.sh
+  Check status:        docker ps
+  View logs:           docker logs <container-name>
+  Pi-hole password:    cat /opt/Synthphony/BridgeCade/secrets/pihole_admin_password.txt
+  Nextcloud password:  grep NEXTCLOUD_ADMIN_PASSWORD /opt/Synthphony/MYestro/.env
+  Your host IP:        hostname -I | awk '{print $1}'
+
+================================================================================
+  End of Guide
+================================================================================
+
+
+================================================================================
+ 13. POST-MIGRATION CHECKLIST (When Moving to a New Host)
+================================================================================
+
+When migrating Synthphony from one machine (e.g., local PC) to another
+(e.g., mini PC server), follow these steps:
+
+Step 1: Clean Up Old Host
+─────────────────────────
+ Remove old /etc/hosts entries on the OLD machine:
+ sudo sed -i '/synth\.home\.arpa/d' /etc/hosts
+
+ Without this, the old host resolves *.synth.home.arpa to its own IP
+ instead of the new server, causing "Connection Refused" errors.
+
+ Verify:
+ grep synth /etc/hosts
+ # Should return nothing
+
+Step 2: Update Router DNS
+─────────────────────────
+ Point your router's DNS to the NEW server IP.
+ For Fritz.box:
+ 1. Open http://fritz.box
+ 2. Internet → Zugangsdaten → DNS-Server
+ 3. Set Lokaler DNS-Server to: <NEW-SERVER-IP>
+ 4. Click Übernehmen
+
+Step 3: Renew DHCP on All Devices
+─────────────────────────────────
+ After changing router DNS, devices need to refresh:
+ # Linux:
+ sudo systemctl restart NetworkManager
+ # Or disconnect/reconnect WiFi
+
+Step 4: Verify Firewall on New Host
+───────────────────────────────────
+ Docker requires IP forwarding and iptables FORWARD policy ACCEPT:
+ sudo sysctl net.ipv4.ip_forward
+ # Must show: net.ipv4.ip_forward = 1
+
+ sudo iptables -L FORWARD -n | head -1
+ # Must show: Chain FORWARD (policy ACCEPT)
+
+ If not, run setup.sh which configures this automatically:
+ cd /opt/Synthphony/BridgeCade && ./scripts/setup.sh
+
+Step 5: Install mkcert CA on Your Devices
+─────────────────────────────────────────
+ Copy the CA certificate from the new server:
+ scp <user>@<NEW-SERVER-IP>:/opt/Synthphony/BridgeCade/mkcert-ca/rootCA.pem ~/Downloads/synthphony-ca.pem
+
+ Install per-platform (see Section 7 above).
+
+Step 6: Configure Tailscale DNS (If Using Tailscale)
+────────────────────────────────────────────────────
+ 1. Go to https://login.tailscale.com/admin/dns
+ 2. Add custom nameserver: <NEW-SERVER-IP>
+ 3. Restrict to domain: synth.home.arpa
+ 4. Enable "Override local DNS"
+
+ Without this, phones on 5G cannot resolve *.synth.home.arpa.
+
+Step 7: Verify Everything
+─────────────────────────
+ From your local PC:
+ dig agentzero.synth.home.arpa @<NEW-SERVER-IP> +short
+ # Should return: <NEW-SERVER-IP>
+
+ curl -k https://agentzero.synth.home.arpa
+ # Should return HTML
+
+ From phone on 5G (with Tailscale connected):
+ Open https://agentzero.synth.home.arpa in browser
+
+ From phone on home WiFi:
+ Open https://agentzero.synth.home.arpa in browser
+
+
+================================================================================
+ 14. FIREWALL SETUP (Pop!_OS / Ubuntu)
+================================================================================
+
+Synthphony requires specific firewall rules to:
+  • Allow LAN/VPN access to web services (Caddy)
+  • Restrict DNS (port 53) to LAN/VPN only (prevent open resolver)
+  • Allow WireGuard VPN connections from anywhere
+  • Protect SSH and other services
+
+Step 1: Install ufw
+───────────────────
+  sudo apt install ufw -y
+
+Step 2: Set Defaults
+────────────────────
+  sudo ufw default deny incoming
+  sudo ufw default allow outgoing
+
+Step 3: Allow SSH (adjust if needed)
+────────────────────────────────────
+  # Option A: SSH from anywhere (default)
+  sudo ufw allow ssh
+
+  # Option B: SSH from LAN/VPN only (more secure)
+  sudo ufw allow from 192.168.178.0/24 to any port 22
+  sudo ufw allow from 10.66.66.0/24 to any port 22
+
+Step 4: Allow Synthphony Services
+─────────────────────────────────
+  # Caddy HTTP/HTTPS — LAN only
+  sudo ufw allow from 192.168.178.0/24 to any port 80 proto tcp
+  sudo ufw allow from 192.168.178.0/24 to any port 443 proto tcp
+
+  # Pi-hole DNS — LAN + WireGuard only (CRITICAL: prevents open resolver)
+  sudo ufw allow from 192.168.178.0/24 to any port 53
+  sudo ufw allow from 10.66.66.0/24 to any port 53
+
+  # WireGuard VPN — must be open to all for remote access
+  sudo ufw allow 51820/udp
+
+Step 5: (Optional) Allow VPN Clients Full Access
+────────────────────────────────────────────────
+  # If you want WireGuard clients to access all services
+  sudo ufw allow from 10.66.66.0/24 to any port 80 proto tcp
+  sudo ufw allow from 10.66.66.0/24 to any port 443 proto tcp
+
+Step 6: Enable Firewall
+───────────────────────
+  sudo ufw enable
+
+  Type 'y' when prompted to confirm.
+
+Step 7: Verify
+──────────────
+  sudo ufw status verbose
+
+  Expected output:
+  ─────────────────────────────────────────────────────────────
+  Status: active
+
+  To                         Action      From
+  --                         ------      ----
+  22/tcp                     ALLOW       Anywhere
+  80/tcp                     ALLOW       192.168.178.0/24
+  443/tcp                    ALLOW       192.168.178.0/24
+  53                         ALLOW       192.168.178.0/24
+  53                         ALLOW       10.66.66.0/24
+  51820/udp                  ALLOW       Anywhere
+  80/tcp                     ALLOW       10.66.66.0/24
+  443/tcp                    ALLOW       10.66.66.0/24
+  ─────────────────────────────────────────────────────────────
+
+⚠️ IMPORTANT: Adjust IP ranges if your LAN or WireGuard subnet differs!
+
+Troubleshooting
+───────────────
+  # Check status
+  sudo ufw status
+
+  # Disable temporarily
+  sudo ufw disable
+
+  # Re-enable
+  sudo ufw enable
+
+  # Delete a rule (use numbered status)
+  sudo ufw status numbered
+  sudo ufw delete 3
+
+  # Reset all rules
+  sudo ufw reset
+
+⚠️ Docker and ufw
+─────────────────
+By default, Docker may bypass ufw rules. If you need strict enforcement:
+
+  sudo nano /etc/docker/daemon.json
+  # Add: {"iptables": false}
+  sudo systemctl restart docker
+
+WARNING: This may break container networking. Only enable if you understand
+the implications.
+
+================================================================================
+  End of Guide
+================================================================================

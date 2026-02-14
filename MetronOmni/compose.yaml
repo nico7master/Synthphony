@@ -1,0 +1,68 @@
+name: metronomni
+
+services:
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: metronomni-portainer
+    restart: unless-stopped
+    networks: [bridgecade_web]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./portainer-data:/data
+    labels:
+      caddy: "portainer.${BASE_DOMAIN}"
+      caddy.reverse_proxy: "{{upstreams 9000}}"
+      caddy.tls: "/certs/portainer.${BASE_DOMAIN}.crt /certs/portainer.${BASE_DOMAIN}.key"
+    healthcheck:
+      test: ["CMD", "/portainer", "--version"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  uptimekuma:
+    image: louislam/uptime-kuma:latest
+    container_name: metronomni-uptimekuma
+    restart: unless-stopped
+    networks: [bridgecade_web]
+    volumes:
+      - ./uptime-kuma:/app/data
+    labels:
+      caddy: "status.${BASE_DOMAIN}"
+      caddy.reverse_proxy: "{{upstreams 3001}}"
+      caddy.tls: "/certs/status.${BASE_DOMAIN}.crt /certs/status.${BASE_DOMAIN}.key"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  netdata:
+    image: netdata/netdata:latest
+    container_name: metronomni-netdata
+    restart: unless-stopped
+    networks: [bridgecade_web]
+    cap_add: [SYS_PTRACE]
+    security_opt: [apparmor:unconfined]
+    volumes:
+      - ./netdata/config:/etc/netdata
+      - ./netdata/lib:/var/lib/netdata
+      - ./netdata/cache:/var/cache/netdata
+    labels:
+      caddy: "netdata.${BASE_DOMAIN}"
+      caddy.reverse_proxy: "{{upstreams 19999}}"
+      caddy.tls: "/certs/netdata.${BASE_DOMAIN}.crt /certs/netdata.${BASE_DOMAIN}.key"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+networks:
+  bridgecade_web:
+    external: true

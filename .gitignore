@@ -1,0 +1,207 @@
+# Synthphony .gitignore
+# Homelab platform - keep secrets and data out of git
+
+# =============================================================================
+# SECRETS - NEVER COMMIT
+# =============================================================================
+# All .env files contain real passwords and configuration
+.env
+**/.env
+.env.*
+!.env.example
+
+# Secret files
+**/secrets/*
+!**/secrets/.gitkeep
+
+# SSH keys
+*.pem
+*.key
+id_rsa
+id_ed25519
+id_ecdsa
+*.pub
+!**/mkcert-ca/*.pem  # CA cert is safe to share
+
+# API keys and tokens
+*.token
+*.authkey
+*_API_KEY
+*_SECRET
+*_PASSWORD
+
+# =============================================================================
+# DATA - Runtime generated
+# =============================================================================
+# Database files
+**/db/
+**/data/
+**/mysql/
+**/postgres/
+**/*.db
+**/*.sqlite
+**/*.sqlite3
+
+# Application data
+**/pihole/
+**/nextcloud/
+**/windmill/
+**/ollama/
+**/openwebui/
+**/solidtime/
+**/portainer-data/
+**/uptime-kuma/
+**/netdata/
+**/homepage/
+**/caddy-data/
+**/caddy-config/
+
+# Certificates (generated)
+**/certs/
+!**/certs/.gitkeep
+
+# WireGuard keys
+**/wireguard/
+!**/wireguard/.gitkeep
+
+# Tailscale state
+**/tailscale/
+
+# mkcert CA (keep the CA cert, ignore runtime files)
+**/mkcert-ca/*.key
+**/mkcert-ca/*.srl
+
+# =============================================================================
+# BACKUPS
+# =============================================================================
+**/backups/
+*.tar.gz
+*.tar.bz2
+*.zip
+*.7z
+*.sql
+*.dump
+
+# =============================================================================
+# DOCKER
+# =============================================================================
+# Docker volumes (if mounted locally)
+volumes/
+
+# Docker build cache
+**/.docker/
+
+# =============================================================================
+# LOGS
+# =============================================================================
+*.log
+logs/
+**/logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# =============================================================================
+# OS / EDITOR
+# =============================================================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.nfs*
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.vim/
+*.sublime-*
+
+# =============================================================================
+# PYTHON
+# =============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+
+# =============================================================================
+# NODE
+# =============================================================================
+node_modules/
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+.pnpm-debug.log
+
+# =============================================================================
+# TEMP / CACHE
+# =============================================================================
+*.tmp
+*.temp
+*.cache
+.cache/
+*.pid
+*.seed
+*.pid.lock
+
+# =============================================================================
+# TESTING
+# =============================================================================
+.coverage
+htmlcov/
+.tox/
+.nox/
+.pytest_cache/
+
+# =============================================================================
+# DEPLOYMENT SCRIPTS (optional - uncomment if you want to keep private)
+# =============================================================================
+# Uncomment below if deploy scripts contain sensitive host info
+# scripts/deploy*.sh
+# scripts/cleanup-and-deploy.sh
+
+# =============================================================================
+# AGENT ZERO PROJECT FILES
+# =============================================================================
+.a0proj/
+
+# =============================================================================
+# BACKUP DIRECTORIES
+# =============================================================================
+scripts-backup*/
+*.backup*
+*.backup-*
