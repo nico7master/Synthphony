@@ -90,10 +90,7 @@ services:
     stop_grace_period: 60s
 
   agentzero:
-    build:
-      context: .
-      dockerfile: Dockerfile.agentzero-custom
-    image: agentzero-custom:latest
+    image: agent0ai/agent-zero:latest
     container_name: orchestrai-agentzero
     restart: unless-stopped
     networks: [bridgecade_web]

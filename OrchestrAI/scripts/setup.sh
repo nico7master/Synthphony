@@ -195,33 +195,6 @@ mkdir -p ../wmill_config
 ok "Data directories ready"
 echo ""
 
-# ----- Custom AgentZero Image -----
-hdr "Custom AgentZero Image"
-if [[ ! -f "$SCRIPT_DIR/../Dockerfile.agentzero-custom" ]]; then
-  step "Creating Dockerfile.agentzero-custom..."
-  cat > "$SCRIPT_DIR/../Dockerfile.agentzero-custom" <<'DOCKERFILE'
-FROM agent0ai/agent-zero:latest
-RUN apt-get update && \
-    apt-get install -y curl ca-certificates && \
-    curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - && \
-    apt-get install -y nodejs && \
-    npm install -g windmill-cli && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-ENV WINDMILL_URL=http://orchestrai-windmill:8000
-DOCKERFILE
-  ok "Dockerfile.agentzero-custom created"
-else
-  ok "Dockerfile.agentzero-custom present"
-fi
-
-step "Building custom AgentZero image..."
-if docker build -f "$SCRIPT_DIR/../Dockerfile.agentzero-custom" -t agentzero-custom:latest "$SCRIPT_DIR/.."; then
-  ok "Custom AgentZero image built"
-else
-  warn "Build may have issues, will retry during start.sh"
-fi
-echo ""
-
 hdr "OrchestrAI Setup Complete"
 
 # Apply group changes without logout
