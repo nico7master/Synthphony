@@ -101,7 +101,10 @@ services:
       SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
       REQUESTS_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
     volumes:
-      - ./agentzero_data:/a0
+      # Mount agent data (preserves existing /a0 structure)
+      - /opt/Synthphony/OrchestrAI/agentzero_data:/a0
+      # Mount Synthphony git repo for direct git access (enables self-updates)
+      - /opt/Synthphony:/a0/usr/projects/synthphony
       - ./agentzero_config:/app/config
       - ./wmill_config:/root/.config/wmill
     labels:
