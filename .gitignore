@@ -205,3 +205,10 @@ htmlcov/
 scripts-backup*/
 *.backup*
 *.backup-*
+
+# =============================================================================
+# ADDITIONAL PATTERNS (added 2026-02-25)
+# =============================================================================
+**/etc-dnsmasq.d/
+**/agentzero_data/
+**/.solidtime_admin_created
