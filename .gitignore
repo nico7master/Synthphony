@@ -227,3 +227,7 @@ scripts-backup*/
 
 # Infrastructure monitor data
 **/infrastructure-monitor/
+
+# Open Notebook data
+**/surrealdb_data/
+**/notebook_data/
