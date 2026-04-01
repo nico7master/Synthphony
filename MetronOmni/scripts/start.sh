@@ -92,14 +92,16 @@ check_url() {
 }
 
 echo "📊 Endpoints:"
-check_url "Portainer"  "https://portainer.${BASE_DOMAIN}"
-check_url "UptimeKuma" "https://status.${BASE_DOMAIN}"
-check_url "Netdata"    "https://netdata.${BASE_DOMAIN}"
+check_url "Portainer"              "https://portainer.${BASE_DOMAIN}"
+check_url "UptimeKuma"             "https://status.${BASE_DOMAIN}"
+check_url "Netdata"                "https://netdata.${BASE_DOMAIN}"
+check_url "Infrastructure Monitor" "https://monitor.${BASE_DOMAIN}"
 
 echo ""
 echo "🔗 URLs:"
-echo "  - Portainer  : ${DIM}https://portainer.${BASE_DOMAIN}${C0}"
-echo "  - UptimeKuma : ${DIM}https://status.${BASE_DOMAIN}${C0}"
-echo "  - Netdata    : ${DIM}https://netdata.${BASE_DOMAIN}${C0}"
+echo "  - Portainer              : ${DIM}https://portainer.${BASE_DOMAIN}${C0}"
+echo "  - UptimeKuma             : ${DIM}https://status.${BASE_DOMAIN}${C0}"
+echo "  - Netdata                : ${DIM}https://netdata.${BASE_DOMAIN}${C0}"
+echo "  - Infrastructure Monitor : ${DIM}https://monitor.${BASE_DOMAIN}${C0}"
 echo ""
 ok "MetronOmni is running. Check status with: docker compose -f ../compose.yaml ps"

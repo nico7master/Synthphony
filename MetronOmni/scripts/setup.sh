@@ -97,6 +97,7 @@ step "Ensuring data directories"
 mkdir -p ../portainer-data
 mkdir -p ../uptime-kuma
 mkdir -p ../netdata/config ../netdata/lib ../netdata/cache
+mkdir -p ../infrastructure-monitor/logs ../infrastructure-monitor/data
 ok "Data directories ready"
 echo ""
 

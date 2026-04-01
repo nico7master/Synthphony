@@ -32,6 +32,7 @@ services:
     networks: [bridgecade_web]
     volumes:
       - ./uptime-kuma:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     labels:
       caddy: "status.${BASE_DOMAIN}"
       caddy.reverse_proxy: "{{upstreams 3001}}"

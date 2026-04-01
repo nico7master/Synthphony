@@ -212,3 +212,18 @@ scripts-backup*/
 **/etc-dnsmasq.d/
 **/agentzero_data/
 **/.solidtime_admin_created
+
+# =============================================================================
+# ADDITIONAL PATTERNS (added 2026-04-01)
+# =============================================================================
+# Portainer data (underscore variant)
+**/portainer_data/
+
+# Windmill postgres data
+**/windmill_postgres_data/
+
+# Any .env file (solidtime.env etc) - examples are already exempted
+*.env
+
+# Infrastructure monitor data
+**/infrastructure-monitor/
