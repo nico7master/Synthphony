@@ -179,6 +179,28 @@ fi
 set_or_update_env "WINDMILL_DB_PASSWORD" "$(<"$SECRETS_DIR/windmill_db_password.txt")" "$ENV_FILE"
 set_or_update_env "WM_ENCRYPTION_KEY" "$(<"$SECRETS_DIR/wm_encryption_key.txt")" "$ENV_FILE"
 set_or_update_env "WM_JWT_SECRET" "$(<"$SECRETS_DIR/wm_jwt_secret.txt")" "$ENV_FILE"
+
+
+# Open Notebook secrets
+step "Generating Open Notebook secrets (hex-only, URL-safe)"
+
+if [[ ! -f "$SECRETS_DIR/opennotebook_encryption_key.txt" ]]; then
+  gen_hex_32 > "$SECRETS_DIR/opennotebook_encryption_key.txt"
+  chmod 600 "$SECRETS_DIR/opennotebook_encryption_key.txt"
+  ok "Open Notebook encryption key generated (hex)"
+else
+  ok "Open Notebook encryption key already exists"
+fi
+
+if [[ ! -f "$SECRETS_DIR/surreal_password.txt" ]]; then
+  gen_hex_32 > "$SECRETS_DIR/surreal_password.txt"
+  chmod 600 "$SECRETS_DIR/surreal_password.txt"
+  ok "SurrealDB password generated (hex)"
+else
+  ok "SurrealDB password already exists"
+fi
+set_or_update_env "OPENNOTEBOOK_ENCRYPTION_KEY" "$(<"$SECRETS_DIR/opennotebook_encryption_key.txt")" "$ENV_FILE"
+set_or_update_env "SURREAL_PASSWORD" "$(<"$SECRETS_DIR/surreal_password.txt")" "$ENV_FILE"
 ok "All secrets injected into .env"
 echo ""
 
@@ -191,6 +213,9 @@ mkdir -p ../windmill/data
 mkdir -p ../ollama
 mkdir -p ../agentzero_data
 mkdir -p ../agentzero_config
+mkdir -p ../surrealdb_data
+chown 1001:1001 ../surrealdb_data
+mkdir -p ../notebook_data
 mkdir -p ../wmill_config
 ok "Data directories ready"
 echo ""

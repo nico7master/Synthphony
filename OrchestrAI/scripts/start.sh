@@ -57,6 +57,8 @@ require_env BASE_DOMAIN          "$ENV_FILE"
 require_env WINDMILL_DB_PASSWORD  "$ENV_FILE"
 require_env WM_ENCRYPTION_KEY    "$ENV_FILE"
 require_env WM_JWT_SECRET        "$ENV_FILE"
+require_env OPENNOTEBOOK_ENCRYPTION_KEY "$ENV_FILE"
+require_env SURREAL_PASSWORD           "$ENV_FILE"
 ok "Configuration valid"
 
 # Optional GPU warning
@@ -74,6 +76,8 @@ echo ""
 hdr "Data Directories"
 mkdir -p ../openwebui ../windmill/db ../windmill/data ../ollama
 mkdir -p ../agentzero_data ../agentzero_config ../wmill_config
+mkdir -p ../surrealdb_data ../notebook_data
+chown 1001:1001 ../surrealdb_data
 ok "Data directories ensured"
 echo ""
 
@@ -152,11 +156,13 @@ echo "Endpoints:"
 check_url "Ollama"     "https://ollama.${BASE_DOMAIN}"
 check_url "Windmill"   "https://windmill.${BASE_DOMAIN}"
 check_url "AgentZero"  "https://agentzero.${BASE_DOMAIN}"
+check_url "Open Notebook" "https://notebook.${BASE_DOMAIN}"
 
 echo ""
 echo "URLs:"
 echo "  - Ollama    : ${DIM}https://ollama.${BASE_DOMAIN}${C0}"
 echo "  - Windmill  : ${DIM}https://windmill.${BASE_DOMAIN}${C0}"
 echo "  - AgentZero : ${DIM}https://agentzero.${BASE_DOMAIN}${C0}"
+echo "  - Open Notebook : ${DIM}https://notebook.${BASE_DOMAIN}${C0}"
 echo ""
 ok "OrchestrAI is running. Check status: docker compose -f ../compose.yaml ps"

@@ -61,7 +61,7 @@
 │  │ • Pi-hole   │  │ • Uptime    │  │ • Solidtime │  │• Ollama││
 │  │ • WireGuard │  │   Kuma      │  │ • Homepage  │  │• OpenW ││
 │  │ • Tailscale │  │ • Netdata   │  │             │  │• Windm ││
-│  │ • Cert Iss. │  │             │  │             │  │        ││
+│  │ • Cert Iss. │  │             │  │             │  │• OpenNb ││
 │  │ • DNS Reg.  │  │             │  │             │  │        ││
 │  └──────┬──────┘  └─────────────┘  └─────────────┘  └────┬───┘│
 │         │                                                │    │
@@ -264,6 +264,7 @@ docker logs bridgecade-tailscale | grep "https://login.tailscale.com"
 | **Ollama** | LLM inference server | (Internal only) |
 | **OpenWebUI** | Chat interface for Ollama | https://ollama.synth.home.arpa |
 | **Windmill** | Workflow automation platform | https://windmill.synth.home.arpa |
+| **Open Notebook** | AI-powered research notebook | https://notebook.synth.home.arpa |
 
 **Note:** AgentZero is the primary AI interface, integrating with Windmill for automation and Ollama for local LLM inference.
 
@@ -428,6 +429,7 @@ docker logs -f orchestrai-ollama
 | **Homepage** | https://page.synth.home.arpa | No login | — |
 | **OpenWebUI** | https://ollama.synth.home.arpa | Create on first visit | You choose |
 | **Windmill** | https://windmill.synth.home.arpa | admin@windmill.dev | `changeme` |
+| **Open Notebook** | https://notebook.synth.home.arpa | — | — |
 | **AgentZero** | https://agentzero.synth.home.arpa | No login | — |
 
 > ⚠️ **Portainer:** Must create admin account within 5 minutes of first start!
@@ -603,6 +605,8 @@ AGENTZERO_IMAGE=ghcr.io/your-org/agentzero:v1.0.0
 | Nextcloud | `MYestro/nextcloud/` | High |
 | Solidtime | `MYestro/solidtime/` | Medium |
 | Windmill | `OrchestrAI/windmill/` | Medium |
+| SurrealDB | `OrchestrAI/surrealdb_data/` | Medium |
+| Open Notebook | `OrchestrAI/notebook_data/` | Low (re-downloadable) |
 | Ollama models | `OrchestrAI/ollama/` | Low (re-downloadable) |
 | Secrets | `*/secrets/` | Critical |
 | Configs | `*/.env` | High |

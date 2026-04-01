@@ -17,7 +17,7 @@
 | **BridgeCade** | Network foundation | Caddy (reverse proxy), Pi-hole (DNS), WireGuard (VPN) |
 | **MetronOmni** | Monitoring | Portainer, Uptime Kuma, Netdata |
 | **MYestro** | Productivity | Nextcloud, Solidtime, Homepage |
-| **OrchestrAI** | AI & Automation | Agent Zero, Windmill, Ollama, OpenWebUI |
+| **OrchestrAI** | AI & Automation | Agent Zero, Windmill, Ollama, OpenWebUI, Open Notebook |
 
 ### Domain Structure
 
@@ -42,6 +42,8 @@ All services accessible via `*.synth.home.arpa`:
 │   │   └── stop.sh                   # Stop services
 │   ├── secrets/                      # Git-ignored secrets
 │   └── .env.example                  # Template for .env
+│   ├── surrealdb_data/         # SurrealDB data
+│   ├── notebook_data/          # Open Notebook data
 ├── BridgeCade/                       # Network plane
 ├── MYestro/                          # Productivity plane
 ├── MetronOmni/                       # Monitoring plane

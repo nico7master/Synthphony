@@ -28,7 +28,7 @@ services:
       start_period: 60s
     depends_on:
       ollama:
-        condition: service_healthy
+        condition: service_started
 
   windmill-db:
     image: postgres:16-alpine
@@ -59,7 +59,7 @@ services:
     restart: unless-stopped
     depends_on:
       windmill-db:
-        condition: service_healthy
+        condition: service_started
     networks:
       - default
       - bridgecade_web
@@ -158,8 +158,11 @@ services:
   surrealdb:
     image: surrealdb/surrealdb:v2
     container_name: orchestrai-surrealdb
+    user: "1001:1001"
     command: start --log info --user root --pass ${SURREAL_PASSWORD} rocksdb:/mydata/mydatabase.db
     restart: unless-stopped
+    networks:
+      - default
     volumes:
       - ./surrealdb_data:/mydata
     environment:
@@ -169,19 +172,14 @@ services:
       options:
         max-size: "10m"
         max-file: "5"
-    healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health >/dev/null 2>&1 || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+
 
   open-notebook:
     image: lfnovo/open_notebook:v1-latest
     container_name: orchestrai-open-notebook
     restart: unless-stopped
-    networks: [bridgecade_web]
     environment:
+      API_URL: "https://notebook.${BASE_DOMAIN}"
       OPEN_NOTEBOOK_ENCRYPTION_KEY: "${OPENNOTEBOOK_ENCRYPTION_KEY}"
       SURREAL_URL: "ws://surrealdb:8000/rpc"
       SURREAL_USER: root
@@ -190,12 +188,17 @@ services:
       SURREAL_DATABASE: open_notebook
     volumes:
       - ./notebook_data:/app/data
+    networks:
+      - default
+      - bridgecade_web
     depends_on:
       surrealdb:
-        condition: service_healthy
+        condition: service_started
     labels:
       caddy: "notebook.${BASE_DOMAIN}"
-      caddy.reverse_proxy: "{{upstreams 8502}}"
+      caddy.0_route: "/api*"
+      caddy.0_route.reverse_proxy: "{{upstreams 5055}}"
+      caddy.1_reverse_proxy: "{{upstreams 8502}}"
       caddy.tls: "/certs/notebook.${BASE_DOMAIN}.crt /certs/notebook.${BASE_DOMAIN}.key"
     logging:
       driver: json-file
