@@ -1,27 +1,30 @@
 name: orchestrai
-
 services:
   openwebui:
     image: ghcr.io/open-webui/open-webui:latest
     container_name: orchestrai-openwebui
     restart: unless-stopped
-    networks: [bridgecade_web]
+    networks:
+    - bridgecade_web
     environment:
       WEBUI_NAME: Synthphony OpenWebUI
       OLLAMA_BASE_URL: http://orchestrai-ollama:11434
     volumes:
-      - ./openwebui:/app/backend/data
+    - ./openwebui:/app/backend/data
     labels:
-      caddy: "ollama.${BASE_DOMAIN}"
-      caddy.reverse_proxy: "{{upstreams 8080}}"
-      caddy.tls: "/certs/ollama.${BASE_DOMAIN}.crt /certs/ollama.${BASE_DOMAIN}.key"
+      caddy: ollama.${BASE_DOMAIN}
+      caddy.reverse_proxy: '{{upstreams 8080}}'
+      caddy.tls: /certs/ollama.${BASE_DOMAIN}.crt /certs/ollama.${BASE_DOMAIN}.key
     logging:
       driver: json-file
       options:
-        max-size: "20m"
-        max-file: "5"
+        max-size: 20m
+        max-file: '5'
     healthcheck:
-      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8080/health >/dev/null 2>&1 || exit 1"]
+      test:
+      - CMD-SHELL
+      - curl --fail --silent http://localhost:8080/health >/dev/null 2>&1 || exit
+        1
       interval: 10s
       timeout: 5s
       retries: 10
@@ -29,30 +32,30 @@ services:
     depends_on:
       ollama:
         condition: service_started
-
   windmill-db:
     image: postgres:16-alpine
     container_name: orchestrai-windmill-db
     restart: unless-stopped
     environment:
       POSTGRES_USER: windmill
-      POSTGRES_PASSWORD: "${WINDMILL_DB_PASSWORD}"
+      POSTGRES_PASSWORD: ${WINDMILL_DB_PASSWORD}
       POSTGRES_DB: windmill
     volumes:
-      - ./windmill/db:/var/lib/postgresql/data
+    - ./windmill/db:/var/lib/postgresql/data
     logging:
       driver: json-file
       options:
-        max-size: "10m"
-        max-file: "5"
+        max-size: 10m
+        max-file: '5'
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U windmill -d windmill"]
+      test:
+      - CMD-SHELL
+      - pg_isready -U windmill -d windmill
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
     stop_grace_period: 60s
-
   windmill:
     image: ghcr.io/windmill-labs/windmill:main
     container_name: orchestrai-windmill
@@ -61,157 +64,236 @@ services:
       windmill-db:
         condition: service_started
     networks:
-      - default
-      - bridgecade_web
+    - default
+    - bridgecade_web
     environment:
-      DATABASE_URL: "postgres://windmill:${WINDMILL_DB_PASSWORD}@windmill-db:5432/windmill"
+      DATABASE_URL: postgres://windmill:${WINDMILL_DB_PASSWORD}@windmill-db:5432/windmill
       BASE_URL: https://windmill.${BASE_DOMAIN}
       RUST_LOG: info
       WM_CONFIG_PATH: /app/data
-      WM_ENCRYPTION_KEY: "${WM_ENCRYPTION_KEY}"
-      WM_JWT_SECRET: "${WM_JWT_SECRET}"
+      WM_ENCRYPTION_KEY: ${WM_ENCRYPTION_KEY}
+      WM_JWT_SECRET: ${WM_JWT_SECRET}
     volumes:
-      - ./windmill/data:/app/data
+    - ./windmill/data:/app/data
     labels:
-      caddy: "windmill.${BASE_DOMAIN}"
-      caddy.reverse_proxy: "{{upstreams 8000}}"
-      caddy.tls: "/certs/windmill.${BASE_DOMAIN}.crt /certs/windmill.${BASE_DOMAIN}.key"
+      caddy: windmill.${BASE_DOMAIN}
+      caddy.reverse_proxy: '{{upstreams 8000}}'
+      caddy.tls: /certs/windmill.${BASE_DOMAIN}.crt /certs/windmill.${BASE_DOMAIN}.key
     logging:
       driver: json-file
       options:
-        max-size: "20m"
-        max-file: "5"
+        max-size: 20m
+        max-file: '5'
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/api/version >/dev/null 2>&1 || exit 1"]
+      test:
+      - CMD-SHELL
+      - curl -fsS http://localhost:8000/api/version >/dev/null 2>&1 || exit 1
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
     stop_grace_period: 60s
-
   agentzero:
     image: agent0ai/agent-zero:latest
     container_name: orchestrai-agentzero
     restart: unless-stopped
-    networks: [bridgecade_web]
+    networks:
+    - bridgecade_web
     environment:
       WINDMILL_BASE_URL: https://windmill.${BASE_DOMAIN}
       WINDMILL_URL: http://orchestrai-windmill:8000
-      ALLOWED_ORIGINS: "https://agentzero.${BASE_DOMAIN},http://localhost:7860"
+      ALLOWED_ORIGINS: https://agentzero.${BASE_DOMAIN},http://localhost:7860
       SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
+      A0_SELF_UPDATE_HEALTH_TIMEOUT_SECONDS: '300'
       REQUESTS_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
     volumes:
-      # Mount agent data (preserves existing /a0 structure)
-      - /opt/Synthphony/OrchestrAI/agentzero_data:/a0/usr
-      - /opt/Synthphony/OrchestrAI/agentzero_update_backups:/root/update-backups
-      # Mount Synthphony git repo for direct git access (enables self-updates)
-      #- /opt/Synthphony:/a0/usr/projects/synthphony
-      - ./agentzero_config:/app/config
-      - ./wmill_config:/root/.config/wmill
+    - /opt/Synthphony/OrchestrAI/agentzero_data:/a0/usr
+    - /opt/Synthphony/OrchestrAI/agentzero_update_backups:/root/update-backups
+    - ./agentzero_config:/app/config
+    - ./wmill_config:/root/.config/wmill
+    - ${HDD_STORAGE_PATH:-/mnt/hdd/agentzero-storage}:/a0/hdd
     labels:
-      caddy: "agentzero.${BASE_DOMAIN}"
-      caddy.reverse_proxy: "{{upstreams 80}}"
-      caddy.tls: "/certs/agentzero.${BASE_DOMAIN}.crt /certs/agentzero.${BASE_DOMAIN}.key"
+      caddy: agentzero.${BASE_DOMAIN}
+      caddy.reverse_proxy: '{{upstreams 80}}'
+      caddy.tls: /certs/agentzero.${BASE_DOMAIN}.crt /certs/agentzero.${BASE_DOMAIN}.key
+      caddy.reverse_proxy.flush_interval: '-1'
+      caddy.reverse_proxy.transport: http
+      caddy.reverse_proxy.transport.keepalive: 75s
     logging:
       driver: json-file
       options:
-        max-size: "10m"
-        max-file: "5"
+        max-size: 10m
+        max-file: '5'
     healthcheck:
-      test: ["CMD-SHELL", "curl --fail --silent --max-time 5 http://localhost/ >/dev/null 2>&1 || exit 1"]
+      test:
+      - CMD-SHELL
+      - curl --fail --silent --max-time 5 http://localhost/ >/dev/null 2>&1 || exit
+        1
       interval: 10s
       timeout: 5s
       retries: 10
-
   ollama:
     image: ollama/ollama:latest
     container_name: orchestrai-ollama
     restart: unless-stopped
-    networks: [bridgecade_web]
+    networks:
+    - bridgecade_web
     environment:
       NVIDIA_VISIBLE_DEVICES: all
       NVIDIA_DRIVER_CAPABILITIES: compute,utility
     volumes:
-      - ./ollama:/root/.ollama
-    # Raw Ollama API is internal-only (OpenWebUI connects via Docker network)
-    # No Caddy labels = not exposed to users (they use ollama.synth.home.arpa which is OpenWebUI)
+    - ./ollama:/root/.ollama
     logging:
       driver: json-file
       options:
-        max-size: "50m"
-        max-file: "5"
+        max-size: 50m
+        max-file: '5'
     healthcheck:
-      test: ["CMD-SHELL", "ollama --version >/dev/null 2>&1 && ollama ps >/dev/null 2>&1 || exit 1"]
+      test:
+      - CMD-SHELL
+      - ollama --version >/dev/null 2>&1 && ollama ps >/dev/null 2>&1 || exit 1
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 30s
     stop_grace_period: 120s
-    # GPU enablement (requires NVIDIA Container Toolkit):
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: "nvidia"
-    #           capabilities: ["gpu"]
-
   surrealdb:
     image: surrealdb/surrealdb:v2
     container_name: orchestrai-surrealdb
-    user: "1001:1001"
+    user: 1001:1001
     command: start --log info --user root --pass ${SURREAL_PASSWORD} rocksdb:/mydata/mydatabase.db
     restart: unless-stopped
     networks:
-      - default
+    - default
     volumes:
-      - ./surrealdb_data:/mydata
+    - ./surrealdb_data:/mydata
     environment:
-      SURREAL_EXPERIMENTAL_GRAPHQL: "true"
+      SURREAL_EXPERIMENTAL_GRAPHQL: 'true'
     logging:
       driver: json-file
       options:
-        max-size: "10m"
-        max-file: "5"
-
-
+        max-size: 10m
+        max-file: '5'
   open-notebook:
     image: lfnovo/open_notebook:v1-latest
     container_name: orchestrai-open-notebook
     restart: unless-stopped
     environment:
-      API_URL: "https://notebook.${BASE_DOMAIN}"
-      OPEN_NOTEBOOK_ENCRYPTION_KEY: "${OPENNOTEBOOK_ENCRYPTION_KEY}"
-      SURREAL_URL: "ws://surrealdb:8000/rpc"
+      API_URL: https://notebook.${BASE_DOMAIN}
+      OPEN_NOTEBOOK_ENCRYPTION_KEY: ${OPENNOTEBOOK_ENCRYPTION_KEY}
+      SURREAL_URL: ws://surrealdb:8000/rpc
       SURREAL_USER: root
-      SURREAL_PASSWORD: "${SURREAL_PASSWORD}"
+      SURREAL_PASSWORD: ${SURREAL_PASSWORD}
       SURREAL_NAMESPACE: open_notebook
       SURREAL_DATABASE: open_notebook
     volumes:
-      - ./notebook_data:/app/data
+    - ./notebook_data:/app/data
     networks:
-      - default
-      - bridgecade_web
+    - default
+    - bridgecade_web
     depends_on:
       surrealdb:
         condition: service_started
     labels:
-      caddy: "notebook.${BASE_DOMAIN}"
-      caddy.0_route: "/api*"
-      caddy.0_route.reverse_proxy: "{{upstreams 5055}}"
-      caddy.1_reverse_proxy: "{{upstreams 8502}}"
-      caddy.tls: "/certs/notebook.${BASE_DOMAIN}.crt /certs/notebook.${BASE_DOMAIN}.key"
+      caddy: notebook.${BASE_DOMAIN}
+      caddy.0_route: /api*
+      caddy.0_route.reverse_proxy: '{{upstreams 5055}}'
+      caddy.1_reverse_proxy: '{{upstreams 8502}}'
+      caddy.tls: /certs/notebook.${BASE_DOMAIN}.crt /certs/notebook.${BASE_DOMAIN}.key
     logging:
       driver: json-file
       options:
-        max-size: "10m"
-        max-file: "5"
+        max-size: 10m
+        max-file: '5'
     healthcheck:
-      test: ["CMD-SHELL", "curl --fail --silent http://localhost:8502 >/dev/null 2>&1 || exit 1"]
+      test:
+      - CMD-SHELL
+      - curl --fail --silent http://localhost:8502 >/dev/null 2>&1 || exit 1
       interval: 30s
       timeout: 5s
       retries: 5
       start_period: 60s
-
+  spaceagent:
+    build:
+      context: ./spaceagent
+      dockerfile: Dockerfile
+      args:
+        SPACE_AGENT_VERSION: v0.66
+    image: space-agent:latest
+    container_name: orchestrai-spaceagent
+    restart: unless-stopped
+    networks:
+    - default
+    - bridgecade_web
+    environment:
+      CUSTOMWARE_PATH: /srv/space/customware
+      HOST: 0.0.0.0
+      PORT: '3000'
+      AGENTZERO_API_URL: http://orchestrai-agentzero:80
+      AGENTZERO_API_TOKEN: ${AGENTZERO_API_TOKEN}
+      OLLAMA_BASE_URL: http://orchestrai-ollama:11434
+    volumes:
+    - ./spaceagent/customware:/srv/space/customware
+    - ./spaceagent/config:/app/config
+    labels:
+      caddy: space.${BASE_DOMAIN}
+      caddy.reverse_proxy: '{{upstreams 3000}}'
+      caddy.tls: /certs/space.${BASE_DOMAIN}.crt /certs/space.${BASE_DOMAIN}.key
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '5'
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - curl --fail --silent http://localhost:3000/ >/dev/null 2>&1 || exit 1
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+  omniroute:
+    image: diegosouzapw/omniroute:latest
+    container_name: orchestrai-omniroute
+    restart: unless-stopped
+    stop_grace_period: 40s
+    networks:
+    - default
+    - bridgecade_web
+    environment:
+      PORT: '20128'
+      DATA_DIR: /app/data
+      NODE_ENV: production
+      JWT_SECRET: ${OMNIROUTE_JWT_SECRET}
+      API_KEY_SECRET: ${OMNIROUTE_API_KEY_SECRET}
+      INITIAL_PASSWORD: ${OMNIROUTE_INITIAL_PASSWORD}
+      NEXT_PUBLIC_BASE_URL: https://omniroute.${BASE_DOMAIN}
+      AUTH_COOKIE_SECURE: 'true'
+      REQUIRE_API_KEY: 'false'
+      OMNIROUTE_ALLOW_PRIVATE_PROVIDER_URLS: 'true'
+      OMNIROUTE_MEMORY_MB: '256'
+      APP_LOG_TO_FILE: 'true'
+    volumes:
+    - ./omniroute-data:/app/data
+    labels:
+      caddy: omniroute.${BASE_DOMAIN}
+      caddy.reverse_proxy: '{{upstreams 20128}}'
+      caddy.reverse_proxy.flush_interval: '-1'
+      caddy.tls: /certs/omniroute.${BASE_DOMAIN}.crt /certs/omniroute.${BASE_DOMAIN}.key
+    logging:
+      driver: json-file
+      options:
+        max-size: 20m
+        max-file: '5'
+    healthcheck:
+      test:
+      - CMD
+      - node
+      - healthcheck.mjs
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 networks:
   bridgecade_web:
     external: true

@@ -59,6 +59,9 @@ require_env WM_ENCRYPTION_KEY    "$ENV_FILE"
 require_env WM_JWT_SECRET        "$ENV_FILE"
 require_env OPENNOTEBOOK_ENCRYPTION_KEY "$ENV_FILE"
 require_env SURREAL_PASSWORD           "$ENV_FILE"
+require_env OMNIROUTE_JWT_SECRET       "$ENV_FILE"
+require_env OMNIROUTE_API_KEY_SECRET   "$ENV_FILE"
+require_env OMNIROUTE_INITIAL_PASSWORD  "$ENV_FILE"
 ok "Configuration valid"
 
 # Optional GPU warning
@@ -77,6 +80,7 @@ hdr "Data Directories"
 mkdir -p ../openwebui ../windmill/db ../windmill/data ../ollama
 mkdir -p ../agentzero_data ../agentzero_config ../wmill_config
 mkdir -p ../surrealdb_data ../notebook_data
+mkdir -p ../omniroute-data
 chown 1001:1001 ../surrealdb_data
 ok "Data directories ensured"
 echo ""
@@ -103,15 +107,6 @@ step "Validating Docker Compose configuration..."
 docker compose -f ../compose.yaml config >/dev/null
 ok "compose.yaml is valid"
 
-hdr "Building Custom Images"
-step "Building custom AgentZero image..."
-if docker compose --progress quiet -f ../compose.yaml build agentzero; then
-  ok "Custom AgentZero image built"
-else
-  err "Failed to build custom AgentZero image"
-  exit 1
-fi
-echo ""
 
 # ----- Start Services -----
 hdr "Starting OrchestrAI Services"
@@ -157,6 +152,7 @@ check_url "Ollama"     "https://ollama.${BASE_DOMAIN}"
 check_url "Windmill"   "https://windmill.${BASE_DOMAIN}"
 check_url "AgentZero"  "https://agentzero.${BASE_DOMAIN}"
 check_url "Open Notebook" "https://notebook.${BASE_DOMAIN}"
+check_url "OmniRoute"   "https://omniroute.${BASE_DOMAIN}"
 
 echo ""
 echo "URLs:"
@@ -164,5 +160,6 @@ echo "  - Ollama    : ${DIM}https://ollama.${BASE_DOMAIN}${C0}"
 echo "  - Windmill  : ${DIM}https://windmill.${BASE_DOMAIN}${C0}"
 echo "  - AgentZero : ${DIM}https://agentzero.${BASE_DOMAIN}${C0}"
 echo "  - Open Notebook : ${DIM}https://notebook.${BASE_DOMAIN}${C0}"
+echo "  - OmniRoute  : ${DIM}https://omniroute.${BASE_DOMAIN}${C0}"
 echo ""
 ok "OrchestrAI is running. Check status: docker compose -f ../compose.yaml ps"

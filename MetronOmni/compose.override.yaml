@@ -1,0 +1,24 @@
+# MetronOmni Resource Limits Override — Updated 2026-04-27 for 32GB RAM
+services:
+  portainer:
+    deploy:
+      resources:
+        limits:
+          memory: 384m
+          cpus: 0.5
+
+  uptimekuma:
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: 0.5
+
+  netdata:
+    deploy:
+      resources:
+        limits:
+          memory: 768m
+          cpus: 1.0
+        reservations:
+          memory: 128m

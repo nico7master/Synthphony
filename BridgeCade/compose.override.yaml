@@ -1,0 +1,53 @@
+# BridgeCade Resource Limits Override — Updated 2026-04-27 for 32GB RAM
+services:
+  caddy:
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: 1.0
+        reservations:
+          memory: 64m
+    oom_score_adj: -800
+
+  pihole:
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: 1.0
+        reservations:
+          memory: 64m
+    oom_score_adj: -900
+
+  wireguard:
+    deploy:
+      resources:
+        limits:
+          memory: 384m
+          cpus: 0.5
+        reservations:
+          memory: 64m
+
+  cert_issuer:
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: 0.5
+
+  dns_registrar:
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: 0.5
+
+  tailscale:
+    deploy:
+      resources:
+        limits:
+          memory: 384m
+          cpus: 0.5
+        reservations:
+          memory: 64m

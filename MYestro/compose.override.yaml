@@ -1,0 +1,71 @@
+# MYestro Resource Limits Override — Updated 2026-04-27 for 32GB RAM
+services:
+  nextcloud-db:
+    deploy:
+      resources:
+        limits:
+          memory: 1024m
+          cpus: 1.0
+        reservations:
+          memory: 128m
+
+  nextcloud:
+    deploy:
+      resources:
+        limits:
+          memory: 1536m
+          cpus: 1.5
+        reservations:
+          memory: 128m
+
+  nextcloud-cron:
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: 0.5
+
+  solidtime-db:
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: 0.5
+        reservations:
+          memory: 64m
+
+  solidtime-app:
+    deploy:
+      resources:
+        limits:
+          memory: 1024m
+          cpus: 1.0
+        reservations:
+          memory: 256m
+
+  solidtime-scheduler:
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: 0.5
+        reservations:
+          memory: 64m
+
+  solidtime-queue:
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: 0.5
+        reservations:
+          memory: 64m
+
+  homepage:
+    deploy:
+      resources:
+        limits:
+          memory: 384m
+          cpus: 0.5
+        reservations:
+          memory: 64m

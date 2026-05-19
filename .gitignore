@@ -231,3 +231,14 @@ scripts-backup*/
 # Open Notebook data
 **/surrealdb_data/
 **/notebook_data/
+
+# OmniRoute runtime data
+**/omniroute-data/
+
+# Space Agent customware (user data, passwords)
+OrchestrAI/spaceagent/customware/
+
+# Root-level backups directory
+
+# Root-level backups (symlink to HDD)
+backups

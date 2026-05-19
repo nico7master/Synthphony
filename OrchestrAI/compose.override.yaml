@@ -1,0 +1,81 @@
+# OrchestrAI Resource Limits Override — Updated 2026-04-27 for 32GB RAM
+# Apply: sudo docker compose -f /opt/Synthphony/OrchestrAI/compose.yaml -f /opt/Synthphony/OrchestrAI/compose.override.yaml up -d
+
+services:
+  agentzero:
+    deploy:
+      resources:
+        limits:
+          memory: 6144m
+          cpus: 3.0
+        reservations:
+          memory: 1024m
+    oom_score_adj: -100
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+
+  ollama:
+    environment:
+      OLLAMA_MAX_LOADED_MODELS: 1
+      OLLAMA_NUM_PARALLEL: 1
+      OLLAMA_KEEP_ALIVE: 5m
+    deploy:
+      resources:
+        limits:
+          memory: 10240m
+          cpus: 4.0
+        reservations:
+          memory: 128m
+    oom_score_adj: 500
+
+  openwebui:
+    deploy:
+      resources:
+        limits:
+          memory: 2048m
+          cpus: 1.5
+        reservations:
+          memory: 512m
+    oom_score_adj: 200
+
+  windmill:
+    environment:
+      NUM_WORKERS: 3
+      WORKER_TAGS: default,flow,native
+    deploy:
+      resources:
+        limits:
+          memory: 3072m
+          cpus: 2.0
+        reservations:
+          memory: 512m
+
+  windmill-db:
+    deploy:
+      resources:
+        limits:
+          memory: 2048m
+          cpus: 1.0
+        reservations:
+          memory: 256m
+
+  open-notebook:
+    deploy:
+      resources:
+        limits:
+          memory: 2048m
+          cpus: 1.0
+        reservations:
+          memory: 256m
+    oom_score_adj: 100
+
+  surrealdb:
+    deploy:
+      resources:
+        limits:
+          memory: 768m
+          cpus: 1.0
+        reservations:
+          memory: 64m
