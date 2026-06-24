@@ -112,6 +112,7 @@ services:
     - ./agentzero_config:/app/config
     - ./wmill_config:/root/.config/wmill
     - ${HDD_STORAGE_PATH:-/mnt/hdd/agentzero-storage}:/a0/hdd
+    - /opt/Synthphony/MYestro/postiz/uploads:/a0/postiz-uploads
     labels:
       caddy: agentzero.${BASE_DOMAIN}
       caddy.reverse_proxy: '{{upstreams 80}}'
@@ -294,6 +295,41 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
+  languagetool:
+    image: erikvl87/languagetool:latest
+    container_name: orchestrai-languagetool
+    restart: unless-stopped
+    networks:
+    - default
+    - bridgecade_web
+    environment:
+      langtool_port: "8010"
+      langtool_allowOrigin: "*"
+      Java_Xms: "512m"
+      Java_Xmx: "2g"
+      langtool_pipelinePrewarming: "true"
+      langtool_maxTextLength: "10000"
+    volumes:
+    - ./languagetool_data:/ngrams
+    labels:
+      caddy: languagetool.${BASE_DOMAIN}
+      caddy.reverse_proxy: '{{upstreams 8010}}'
+      caddy.tls: /certs/languagetool.${BASE_DOMAIN}.crt /certs/languagetool.${BASE_DOMAIN}.key
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '5'
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - curl -f http://localhost:8010/v2/languages || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    stop_grace_period: 60s
+
 networks:
   bridgecade_web:
     external: true

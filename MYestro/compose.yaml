@@ -1,7 +1,5 @@
 name: myestro
-
 services:
-  # ==================== NEXTCLOUD ====================
   nextcloud-db:
     image: mariadb:latest
     container_name: myestro-nextcloud-db
@@ -10,12 +8,14 @@ services:
     environment:
       MYSQL_DATABASE: nextcloud
       MYSQL_USER: nextcloud
-      MYSQL_ROOT_PASSWORD: "${NEXTCLOUD_DB_ROOT_PASSWORD}"
-      MYSQL_PASSWORD: "${NEXTCLOUD_DB_PASSWORD}"
+      MYSQL_ROOT_PASSWORD: ${NEXTCLOUD_DB_ROOT_PASSWORD}
+      MYSQL_PASSWORD: ${NEXTCLOUD_DB_PASSWORD}
     volumes:
-      - ./nextcloud/db:/var/lib/mysql
+    - ./nextcloud/db:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "mariadb-admin ping -h localhost || mysqladmin ping -h localhost || exit 1"]
+      test:
+      - CMD-SHELL
+      - mariadb-admin ping -h localhost || mysqladmin ping -h localhost || exit 1
       interval: 30s
       timeout: 5s
       retries: 5
@@ -23,69 +23,68 @@ services:
     logging:
       driver: json-file
       options:
-        max-size: "10m"
-        max-file: "5"
+        max-size: 10m
+        max-file: '5'
     stop_grace_period: 90s
-
   nextcloud:
     image: nextcloud:latest
     container_name: myestro-nextcloud
     restart: unless-stopped
     depends_on:
-      - nextcloud-db
+    - nextcloud-db
     networks:
-      - default
-      - bridgecade_web
+    - default
+    - bridgecade_web
     environment:
       MYSQL_HOST: nextcloud-db
       MYSQL_DATABASE: nextcloud
       MYSQL_USER: nextcloud
-      MYSQL_PASSWORD: "${NEXTCLOUD_DB_PASSWORD}"
+      MYSQL_PASSWORD: ${NEXTCLOUD_DB_PASSWORD}
       NEXTCLOUD_ADMIN_USER: admin
-      NEXTCLOUD_ADMIN_PASSWORD: "${NEXTCLOUD_ADMIN_PASSWORD}"
-      OVERWRITEHOST: "nextcloud.${BASE_DOMAIN}"
-      OVERWRITEPROTOCOL: "https"
+      NEXTCLOUD_ADMIN_PASSWORD: ${NEXTCLOUD_ADMIN_PASSWORD}
+      OVERWRITEHOST: nextcloud.${BASE_DOMAIN}
+      OVERWRITEPROTOCOL: https
     volumes:
-      - ./nextcloud/html:/var/www/html
+    - ./nextcloud/html:/var/www/html
     labels:
-      caddy: "nextcloud.${BASE_DOMAIN}"
-      caddy.reverse_proxy: "{{upstreams 80}}"
-      caddy.tls: "/certs/nextcloud.${BASE_DOMAIN}.crt /certs/nextcloud.${BASE_DOMAIN}.key"
+      caddy: nextcloud.${BASE_DOMAIN}
+      caddy.reverse_proxy: '{{upstreams 80}}'
+      caddy.tls: /certs/nextcloud.${BASE_DOMAIN}.crt /certs/nextcloud.${BASE_DOMAIN}.key
     logging:
       driver: json-file
       options:
-        max-size: "20m"
-        max-file: "5"
+        max-size: 20m
+        max-file: '5'
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost/login || exit 1"]
+      test:
+      - CMD-SHELL
+      - curl -fsS http://localhost/login || exit 1
       interval: 60s
       timeout: 5s
       retries: 5
       start_period: 120s
     stop_grace_period: 120s
-
   nextcloud-cron:
     image: nextcloud:latest
     container_name: myestro-nextcloud-cron
     restart: unless-stopped
     depends_on:
-      - nextcloud
-    networks: [default]
+    - nextcloud
+    networks:
+    - default
     environment:
       MYSQL_HOST: nextcloud-db
       MYSQL_DATABASE: nextcloud
       MYSQL_USER: nextcloud
-      MYSQL_PASSWORD: "${NEXTCLOUD_DB_PASSWORD}"
+      MYSQL_PASSWORD: ${NEXTCLOUD_DB_PASSWORD}
     volumes:
-      - ./nextcloud/html:/var/www/html:ro
+    - ./nextcloud/html:/var/www/html:ro
     entrypoint: /cron.sh
     logging:
       driver: json-file
       options:
-        max-size: "10m"
-        max-file: "3"
-
-  # ==================== SOLIDTIME ====================
+        max-size: 10m
+        max-file: '3'
   solidtime-db:
     image: postgres:latest
     container_name: myestro-solidtime-db
@@ -93,12 +92,15 @@ services:
     environment:
       POSTGRES_DB: solidtime
       POSTGRES_USER: solidtime
-      POSTGRES_PASSWORD: "${SOLIDTIME_DB_PASSWORD}"
+      POSTGRES_PASSWORD: ${SOLIDTIME_DB_PASSWORD}
     volumes:
-      - solidtime-db-data:/var/lib/postgresql
-    networks: [default]
+    - solidtime-db-data:/var/lib/postgresql
+    networks:
+    - default
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U solidtime -d solidtime || exit 1"]
+      test:
+      - CMD-SHELL
+      - pg_isready -U solidtime -d solidtime || exit 1
       interval: 30s
       timeout: 5s
       retries: 5
@@ -106,35 +108,36 @@ services:
     logging:
       driver: json-file
       options:
-        max-size: "10m"
-        max-file: "5"
+        max-size: 10m
+        max-file: '5'
     stop_grace_period: 60s
-
   solidtime-app:
     image: solidtime/solidtime:latest
     container_name: myestro-solidtime-app
     restart: unless-stopped
-    user: "1000:1000"
+    user: 1000:1000
     environment:
       CONTAINER_MODE: http
-      AUTO_DB_MIGRATE: "true"
+      AUTO_DB_MIGRATE: 'true'
     env_file:
-      - solidtime.env
+    - solidtime.env
     volumes:
-      - solidtime-app-storage:/var/www/html/storage
-      - ./solidtime/logs:/var/www/html/storage/logs
-      - ./solidtime/app-storage:/var/www/html/storage/app
+    - solidtime-app-storage:/var/www/html/storage
+    - ./solidtime/logs:/var/www/html/storage/logs
+    - ./solidtime/app-storage:/var/www/html/storage/app
     networks:
-      - default
-      - bridgecade_web
+    - default
+    - bridgecade_web
     depends_on:
-      - solidtime-db
+    - solidtime-db
     labels:
-      caddy: "solidtime.${BASE_DOMAIN}"
-      caddy.reverse_proxy: "{{upstreams 8000}}"
-      caddy.tls: "/certs/solidtime.${BASE_DOMAIN}.crt /certs/solidtime.${BASE_DOMAIN}.key"
+      caddy: solidtime.${BASE_DOMAIN}
+      caddy.reverse_proxy: '{{upstreams 8000}}'
+      caddy.tls: /certs/solidtime.${BASE_DOMAIN}.crt /certs/solidtime.${BASE_DOMAIN}.key
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8000 || exit 1"]
+      test:
+      - CMD-SHELL
+      - curl -fsS http://localhost:8000 || exit 1
       interval: 30s
       timeout: 5s
       retries: 5
@@ -142,27 +145,29 @@ services:
     logging:
       driver: json-file
       options:
-        max-size: "10m"
-        max-file: "5"
-
+        max-size: 10m
+        max-file: '5'
   solidtime-scheduler:
     image: solidtime/solidtime:latest
     container_name: myestro-solidtime-scheduler
     restart: unless-stopped
-    user: "1000:1000"
+    user: 1000:1000
     environment:
       CONTAINER_MODE: scheduler
     env_file:
-      - solidtime.env
+    - solidtime.env
     volumes:
-      - solidtime-app-storage:/var/www/html/storage
-      - ./solidtime/logs:/var/www/html/storage/logs
-      - ./solidtime/app-storage:/var/www/html/storage/app
-    networks: [default]
+    - solidtime-app-storage:/var/www/html/storage
+    - ./solidtime/logs:/var/www/html/storage/logs
+    - ./solidtime/app-storage:/var/www/html/storage/app
+    networks:
+    - default
     depends_on:
-      - solidtime-db
+    - solidtime-db
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -f 'schedule:work' || pgrep -f artisan || exit 1"]
+      test:
+      - CMD-SHELL
+      - pgrep -f 'schedule:work' || pgrep -f artisan || exit 1
       interval: 30s
       timeout: 5s
       retries: 3
@@ -170,28 +175,30 @@ services:
     logging:
       driver: json-file
       options:
-        max-size: "10m"
-        max-file: "5"
-
+        max-size: 10m
+        max-file: '5'
   solidtime-queue:
     image: solidtime/solidtime:latest
     container_name: myestro-solidtime-queue
     restart: unless-stopped
-    user: "1000:1000"
+    user: 1000:1000
     environment:
       CONTAINER_MODE: worker
-      WORKER_COMMAND: "php /var/www/html/artisan queue:work"
+      WORKER_COMMAND: php /var/www/html/artisan queue:work
     env_file:
-      - solidtime.env
+    - solidtime.env
     volumes:
-      - solidtime-app-storage:/var/www/html/storage
-      - ./solidtime/logs:/var/www/html/storage/logs
-      - ./solidtime/app-storage:/var/www/html/storage/app
-    networks: [default]
+    - solidtime-app-storage:/var/www/html/storage
+    - ./solidtime/logs:/var/www/html/storage/logs
+    - ./solidtime/app-storage:/var/www/html/storage/app
+    networks:
+    - default
     depends_on:
-      - solidtime-db
+    - solidtime-db
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -f 'queue:work' || exit 1"]
+      test:
+      - CMD-SHELL
+      - pgrep -f 'queue:work' || exit 1
       interval: 30s
       timeout: 5s
       retries: 3
@@ -199,41 +206,192 @@ services:
     logging:
       driver: json-file
       options:
-        max-size: "10m"
-        max-file: "5"
-
-  # ==================== HOMEPAGE ====================
+        max-size: 10m
+        max-file: '5'
   homepage:
     image: ghcr.io/gethomepage/homepage:latest
     container_name: myestro-homepage
     restart: unless-stopped
     networks:
-      - bridgecade_web
+    - bridgecade_web
     environment:
-      HOMEPAGE_ALLOWED_HOSTS: "page.synth.home.arpa"
+      HOMEPAGE_ALLOWED_HOSTS: page.synth.home.arpa
     volumes:
-      - ./homepage:/app/config
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+    - ./homepage:/app/config
+    - /var/run/docker.sock:/var/run/docker.sock:ro
     labels:
-      caddy: "page.${BASE_DOMAIN}"
-      caddy.reverse_proxy: "{{upstreams 3000}}"
-      caddy.tls: "/certs/page.${BASE_DOMAIN}.crt /certs/page.${BASE_DOMAIN}.key"
+      caddy: page.${BASE_DOMAIN}
+      caddy.reverse_proxy: '{{upstreams 3000}}'
+      caddy.tls: /certs/page.${BASE_DOMAIN}.crt /certs/page.${BASE_DOMAIN}.key
     logging:
       driver: json-file
       options:
-        max-size: "10m"
-        max-file: "5"
+        max-size: 10m
+        max-file: '5'
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000 || exit 1"]
+      test:
+      - CMD-SHELL
+      - wget -qO- http://localhost:3000 || exit 1
       interval: 30s
       timeout: 5s
       retries: 5
       start_period: 30s
-
+  postiz:
+    image: ghcr.io/gitroomhq/postiz-app:latest
+    container_name: myestro-postiz
+    restart: unless-stopped
+    networks:
+    - default
+    - bridgecade_web
+    depends_on:
+      postiz-postgres:
+        condition: service_healthy
+      postiz-redis:
+        condition: service_healthy
+    environment:
+      MAIN_URL: https://postiz.synthphony.my.id
+      FRONTEND_URL: https://postiz.synthphony.my.id
+      NEXT_PUBLIC_BACKEND_URL: https://postiz.synthphony.my.id/api
+      BACKEND_INTERNAL_URL: http://myestro-postiz:5000
+      JWT_SECRET: ${POSTIZ_JWT_SECRET}
+      DATABASE_URL: postgres://postiz:${POSTIZ_DB_PASSWORD}@postiz-postgres:5432/postiz
+      REDIS_URL: redis://postiz-redis:6379
+      IS_GENERAL: 'true'
+      AUTH_PROVIDER: local
+      NODE_OPTIONS: --max-old-space-size=768
+      TEMPORAL_ADDRESS: postiz-temporal:7233
+      STORAGE_PROVIDER: local
+      UPLOAD_DIRECTORY: /uploads
+      NEXT_PUBLIC_UPLOAD_DIRECTORY: https://postiz.synthphony.my.id/uploads
+      INSTAGRAM_APP_ID: ${INSTAGRAM_APP_ID}
+      INSTAGRAM_APP_SECRET: ${INSTAGRAM_APP_SECRET}
+      FACEBOOK_APP_ID: ${FACEBOOK_APP_ID}
+      FACEBOOK_APP_SECRET: ${FACEBOOK_APP_SECRET}
+    volumes:
+    - ./postiz/config:/config/
+    - ./postiz/uploads:/uploads/
+    - ./postiz/auth:/app/server/data/
+    labels:
+      caddy: postiz.${BASE_DOMAIN}
+      caddy.reverse_proxy: '{{upstreams 5000}}'
+      caddy.tls: /certs/postiz.${BASE_DOMAIN}.crt /certs/postiz.${BASE_DOMAIN}.key
+    logging:
+      driver: json-file
+      options:
+        max-size: 20m
+        max-file: '5'
+    healthcheck:
+      test:
+      - CMD
+      - node
+      - /config/healthcheck.js
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+  postiz-postgres:
+    image: postgres:17-alpine
+    container_name: myestro-postiz-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postiz
+      POSTGRES_PASSWORD: ${POSTIZ_DB_PASSWORD}
+      POSTGRES_DB: postiz
+    volumes:
+    - ./postiz/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - pg_isready -U postiz -d postiz
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  postiz-redis:
+    image: redis:7-alpine
+    container_name: myestro-postiz-redis
+    restart: unless-stopped
+    volumes:
+    - ./postiz/redis:/data
+    healthcheck:
+      test:
+      - CMD
+      - redis-cli
+      - ping
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  postiz-temporal:
+    image: temporalio/auto-setup:1.26
+    container_name: myestro-postiz-temporal
+    restart: unless-stopped
+    depends_on:
+      postiz-temporal-postgres:
+        condition: service_healthy
+      postiz-temporal-es:
+        condition: service_healthy
+    environment:
+      DB: postgres
+      DB_PORT: 5432
+      POSTGRES_USER: temporal
+      POSTGRES_PWD: ${TEMPORAL_DB_PASSWORD}
+      POSTGRES_SEEDS: postiz-temporal-postgres
+      ENABLE_ES_SEED: 'true'
+      ES_SEEDS: postiz-temporal-es
+      ES_VERSION: v8
+      ES_USER: elastic
+      ES_PWD: ${TEMPORAL_ES_PASSWORD}
+    volumes:
+    - ./postiz/temporal/config/dynamicconfig:/etc/temporal/config/dynamicconfig
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - tctl --address localhost:7233 cluster health
+      interval: 30s
+      timeout: 10s
+      retries: 5
+  postiz-temporal-postgres:
+    image: postgres:17-alpine
+    container_name: myestro-postiz-temporal-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: ${TEMPORAL_DB_PASSWORD}
+      POSTGRES_DB: temporal
+    volumes:
+    - ./postiz/temporal/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - pg_isready -U temporal -d temporal
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  postiz-temporal-es:
+    image: elasticsearch:8
+    container_name: myestro-postiz-temporal-es
+    restart: unless-stopped
+    environment:
+      cluster.name: postiz-es-cluster
+      discovery.type: single-node
+      xpack.security.enabled: 'true'
+      ELASTIC_PASSWORD: ${TEMPORAL_ES_PASSWORD}
+      ES_JAVA_OPTS: -Xms256m -Xmx256m
+    volumes:
+    - ./postiz/temporal/es:/usr/share/elasticsearch/data
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - curl -f http://localhost:9200/_cluster/health || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 5
 volumes:
-  solidtime-db-data:
-  solidtime-app-storage:
-
+  solidtime-db-data: null
+  solidtime-app-storage: null
 networks:
   bridgecade_web:
     external: true

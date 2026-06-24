@@ -242,3 +242,15 @@ OrchestrAI/spaceagent/customware/
 
 # Root-level backups (symlink to HDD)
 backups
+
+# =============================================================================
+# ADDITIONAL PATTERNS (added 2026-06-24)
+# =============================================================================
+# Compose backup files
+**/compose.yaml.bak*
+
+# Postiz runtime data (MYestro)
+MYestro/postiz/
+
+# Tee test artifacts
+**/.tee_test

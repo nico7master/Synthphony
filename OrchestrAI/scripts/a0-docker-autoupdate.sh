@@ -28,13 +28,13 @@ A0_IMAGE="agent0ai/agent-zero:latest"
 A0_CONTAINER_NAME="orchestrai-agentzero"
 
 # Directory where backups will be stored
-BACKUP_DIR="/mnt/hdd/backups/agentzero"
+BACKUP_DIR="${BACKUP_DIR:-/mnt/hdd/backups/agentzero}"
 
 # How many backups to keep (rotates old ones)
 KEEP_BACKUPS=5
 
 # Log file location
-LOG_FILE="/mnt/hdd/backups/agentzero/a0-autoupdate.log"
+LOG_FILE="${BACKUP_DIR}/a0-autoupdate.log"
 
 # If you use docker-compose, set the path to your compose file.
 # Leave empty ("") if you launch with `docker run` directly.
@@ -60,6 +60,10 @@ A0_PROJECT_NAME="orchestrai"
 
 # Lock file to prevent concurrent runs
 LOCK_FILE="/tmp/a0-autoupdate.lock"
+
+# Comma-separated list of volume source paths to EXCLUDE from backup
+# (e.g. backup directories mounted into the container)
+EXCLUDE_VOLUME_SOURCES="/opt/Synthphony/OrchestrAI/agentzero_update_backups"
 
 # =============================================================================
 # A0 NATIVE BACKUP (UI-importable via Settings > Backup Restore)
@@ -321,29 +325,51 @@ create_backup() {
     local mounts_json
     mounts_json=$(docker inspect --format '{{json .Mounts}}' "${A0_CONTAINER_NAME}")
 
+    export BACKUP_DIR EXCLUDE_VOLUME_SOURCES
     echo "${mounts_json}" | python3 -c "
 import json, sys, os
 mounts = json.loads(sys.stdin.read())
+exclude_dirs = set()
+for p in os.environ.get('EXCLUDE_VOLUME_SOURCES', '').split(','):
+    p = p.strip()
+    if p:
+        exclude_dirs.add(p)
+backup_dir = os.environ.get('BACKUP_DIR', '')
+if backup_dir:
+    exclude_dirs.add(backup_dir)
 for m in mounts:
     src = m.get('Source', '')
     mtype = m.get('Type', '')
     dst = m.get('Destination', '')
-    if mtype == 'bind' and os.path.isdir(src):
+    if mtype == 'bind' and os.path.isdir(src) and src not in exclude_dirs:
         safe = dst.replace('/', '_').strip('_') or 'root'
-        print(f'{src}|{safe}')
-" 2>/dev/null | while IFS='|' read -r src_dir safe_name; do
-        if [[ -d "${src_dir}" ]]; then
-            log "  Backing up volume: ${src_dir} -> ${safe_name}/"
-            mkdir -p "${backup_path}/volumes/${safe_name}"
-            if command -v rsync &> /dev/null; then
-                rsync -a "${src_dir}/" "${backup_path}/volumes/${safe_name}/" 2>> "${LOG_FILE}" || {
-                    log "  WARN: rsync failed for ${src_dir}"
-                }
+        print(f'{src}|{dst}|{safe}')
+" 2>/dev/null | while IFS='|' read -r src_dir dst_dir safe_name; do
+        if [[ -z "${src_dir}" || -z "${dst_dir}" ]]; then continue; fi
+        local dest_path="${backup_path}/volumes/${safe_name}"
+        log "  Backing up volume: ${dst_dir} (container) -> ${safe_name}/"
+        mkdir -p "${dest_path}"
+
+        # Primary: use docker exec tar (reads as root inside container — no permission issues)
+        if docker exec "${A0_CONTAINER_NAME}" tar -C "${dst_dir}" -cf - . 2>/dev/null \
+            | tar -xf - -C "${dest_path}" 2>/dev/null; then
+            log "    Done (via docker exec)."
+        else
+            # Fallback: rsync from host path
+            log "    docker exec failed, falling back to rsync from host..."
+            if [[ -d "${src_dir}" ]]; then
+                if command -v rsync &> /dev/null; then
+                    rsync -a "${src_dir}/" "${dest_path}/" 2>> "${LOG_FILE}" || {
+                        log "  WARN: rsync fallback also failed for ${src_dir}"
+                    }
+                else
+                    tar -cf - -C "${src_dir}" . 2>> "${LOG_FILE}" \
+                        | tar -xf - -C "${dest_path}" 2>> "${LOG_FILE}" || {
+                        log "  WARN: tar fallback also failed for ${src_dir}"
+                    }
+                fi
             else
-                tar -cf - -C "${src_dir}" . 2>> "${LOG_FILE}" \
-                    | tar -xf - -C "${backup_path}/volumes/${safe_name}" 2>> "${LOG_FILE}" || {
-                    log "  WARN: tar failed for ${src_dir}"
-                }
+                log "  WARN: Host path ${src_dir} not found — skipping volume."
             fi
         fi
     done
@@ -615,10 +641,14 @@ install_cron() {
     exit 0
 }
 
-# Handle --install-cron flag before main
-if [[ $# -gt 0 && "$1" == "--install-cron" ]]; then
-    install_cron
-fi
+backup_only() {
+    preflight
+    log "=== Backup-only mode (no update) ==="
+    create_backup
+    log "==========================================="
+    log "=== Agent Zero Backup Complete ==="
+    log "==========================================="
+}
 
 main() {
     preflight
@@ -631,6 +661,18 @@ main() {
     log "=== Agent Zero Docker Auto-Update Done  ==="
     log "==========================================="
 }
+
+if [[ $# -gt 0 ]]; then
+    case "$1" in
+        --install-cron)
+            install_cron
+            ;;
+        --backup-only)
+            backup_only
+            exit $?
+            ;;
+    esac
+fi
 
 main "$@"
 

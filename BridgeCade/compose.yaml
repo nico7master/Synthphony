@@ -1,167 +1,188 @@
 name: bridgecade
-
 services:
   caddy:
     image: lucaslorentz/caddy-docker-proxy:latest
     container_name: bridgecade-caddy
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
+    - 80:80
+    - 443:443
     networks:
-      - bridgecade_web
+    - bridgecade_web
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /opt/Synthphony/BridgeCade/certs:/certs:ro
-      - ./caddy-data:/data
-      - ./caddy-config:/config
+    - /var/run/docker.sock:/var/run/docker.sock:ro
+    - /opt/Synthphony/BridgeCade/certs:/certs:ro
+    - ./caddy-data:/data
+    - ./caddy-config:/config
     environment:
       CADDY_INGRESS_NETWORKS: bridgecade_web
     logging:
       driver: json-file
       options:
-        max-size: "10m"
-        max-file: "5"
+        max-size: 10m
+        max-file: '5'
     healthcheck:
-      test: ["CMD", "caddy", "version"]
+      test:
+      - CMD
+      - caddy
+      - version
       interval: 30s
       timeout: 5s
       retries: 5
       start_period: 15s
     stop_grace_period: 30s
-
   pihole:
     image: pihole/pihole:latest
     container_name: bridgecade-pihole
     restart: unless-stopped
     networks:
-      - bridgecade_web
+    - bridgecade_web
     ports:
-      - "53:53/tcp"
-      - "53:53/udp"
+    - 53:53/tcp
+    - 53:53/udp
     environment:
       TZ: Europe/Vienna
-      FTLCONF_webserver_api_password: "${PIHOLE_ADMIN_PASSWORD}"
-      FTLCONF_dns_listeningMode: "ALL"
-      FTLCONF_dns_upstreams: "1.1.1.1;8.8.8.8"
-      FTLCONF_misc_etc_dnsmasq_d: "true"
+      FTLCONF_webserver_api_password: ${PIHOLE_ADMIN_PASSWORD}
+      FTLCONF_dns_listeningMode: ALL
+      FTLCONF_dns_upstreams: 1.1.1.1;8.8.8.8
+      FTLCONF_misc_etc_dnsmasq_d: 'true'
     volumes:
-      - /opt/Synthphony/BridgeCade/pihole/etc-pihole:/etc/pihole
-      - /opt/Synthphony/BridgeCade/etc-dnsmasq.d:/etc/dnsmasq.d
+    - /opt/Synthphony/BridgeCade/pihole/etc-pihole:/etc/pihole
+    - /opt/Synthphony/BridgeCade/etc-dnsmasq.d:/etc/dnsmasq.d
     cap_add:
-      - NET_ADMIN
-      - SYS_TIME
-      - SYS_NICE
+    - NET_ADMIN
+    - SYS_TIME
+    - SYS_NICE
     labels:
-      caddy: "pihole.${BASE_DOMAIN}"
-      caddy.reverse_proxy: "{{upstreams 80}}"
-      caddy.tls: "/certs/pihole.${BASE_DOMAIN}.crt /certs/pihole.${BASE_DOMAIN}.key"
+      caddy: pihole.${BASE_DOMAIN}
+      caddy.reverse_proxy: '{{upstreams 80}}'
+      caddy.tls: /certs/pihole.${BASE_DOMAIN}.crt /certs/pihole.${BASE_DOMAIN}.key
     logging:
       driver: json-file
       options:
-        max-size: "10m"
-        max-file: "5"
+        max-size: 10m
+        max-file: '5'
     healthcheck:
-      test: ["CMD-SHELL", "dig +short pi.hole @127.0.0.1 || exit 1"]
+      test:
+      - CMD-SHELL
+      - dig +short pi.hole @127.0.0.1 || exit 1
       interval: 60s
       timeout: 5s
       retries: 3
       start_period: 20s
     stop_grace_period: 60s
-
   wireguard:
     image: lscr.io/linuxserver/wireguard:latest
     container_name: bridgecade-wireguard
     restart: unless-stopped
     networks:
-      - bridgecade_web
+    - bridgecade_web
     cap_add:
-      - NET_ADMIN
-      - SYS_MODULE
+    - NET_ADMIN
+    - SYS_MODULE
     sysctls:
-      - net.ipv4.conf.all.src_valid_mark=1
+    - net.ipv4.conf.all.src_valid_mark=1
     ports:
-      - "${WG_SERVERPORT}:${WG_SERVERPORT}/udp"
+    - ${WG_SERVERPORT}:${WG_SERVERPORT}/udp
     environment:
       TZ: Europe/Vienna
-      SERVERURL: "${WG_SERVERURL}"
-      SERVERPORT: "${WG_SERVERPORT}"
-      PEERS: "${WG_PEERS}"
-      PEERDNS: "${BRIDGECADE_LAN_IP}"
-      INTERNAL_SUBNET: "${WG_INTERNAL_SUBNET}"
-      ALLOWEDIPS: "${WG_ALLOWEDIPS}"
-      LOG_CONFS: "true"
+      SERVERURL: ${WG_SERVERURL}
+      SERVERPORT: ${WG_SERVERPORT}
+      PEERS: ${WG_PEERS}
+      PEERDNS: ${BRIDGECADE_LAN_IP}
+      INTERNAL_SUBNET: ${WG_INTERNAL_SUBNET}
+      ALLOWEDIPS: ${WG_ALLOWEDIPS}
+      LOG_CONFS: 'true'
     volumes:
-      - ./wireguard:/config
-      - /lib/modules:/lib/modules:ro
+    - ./wireguard:/config
+    - /lib/modules:/lib/modules:ro
     logging:
       driver: json-file
       options:
-        max-size: "10m"
-        max-file: "5"
+        max-size: 10m
+        max-file: '5'
     healthcheck:
-      test: ["CMD-SHELL", "wg show || exit 1"]
+      test:
+      - CMD-SHELL
+      - wg show || exit 1
       interval: 60s
       timeout: 5s
       retries: 3
       start_period: 20s
     stop_grace_period: 60s
-
   cert_issuer:
     build: ./cert-issuer
     container_name: bridgecade-cert-issuer
     restart: unless-stopped
     networks:
-      - bridgecade_web
+    - bridgecade_web
     environment:
       CAROOT: /mkcert-ca
       CERT_DIR: /certs
-      DOMAIN_SUFFIX: "${BASE_DOMAIN}"
+      DOMAIN_SUFFIX: ${BASE_DOMAIN}
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /opt/Synthphony/BridgeCade/mkcert-ca:/mkcert-ca
-      - /opt/Synthphony/BridgeCade/certs:/certs
+    - /var/run/docker.sock:/var/run/docker.sock:ro
+    - /opt/Synthphony/BridgeCade/mkcert-ca:/mkcert-ca
+    - /opt/Synthphony/BridgeCade/certs:/certs
     logging:
       driver: json-file
       options:
-        max-size: "5m"
-        max-file: "3"
+        max-size: 5m
+        max-file: '3'
     stop_grace_period: 30s
-
   dns_registrar:
     build: ./dns-registrar
     container_name: bridgecade-dns-registrar
     restart: unless-stopped
     networks:
-      - bridgecade_web
+    - bridgecade_web
     environment:
       PIHOLE_CONTAINER: bridgecade-pihole
-      DOMAIN_SUFFIX: "${BASE_DOMAIN}"
-      INGRESS_IP: "${BRIDGECADE_LAN_IP}"
+      DOMAIN_SUFFIX: ${BASE_DOMAIN}
+      INGRESS_IP: ${BRIDGECADE_LAN_IP}
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+    - /var/run/docker.sock:/var/run/docker.sock:ro
     logging:
       driver: json-file
       options:
-        max-size: "5m"
-        max-file: "3"
+        max-size: 5m
+        max-file: '3'
     stop_grace_period: 30s
-
   tailscale:
     image: tailscale/tailscale:latest
     container_name: bridgecade-tailscale
     restart: unless-stopped
     environment:
-      TS_ROUTES: "${LAN_NETWORK}"
+      TS_ROUTES: ${LAN_NETWORK}
       TS_HOSTNAME: synthphony-bridgecade
-      TS_STATE_DIR: "/var/lib/tailscale"
+      TS_STATE_DIR: /var/lib/tailscale
     cap_add:
-      - NET_ADMIN
-      - SYS_MODULE
+    - NET_ADMIN
+    - SYS_MODULE
     volumes:
-      - ./tailscale:/var/lib/tailscale
-      - /dev/net/tun:/dev/net/tun
-
+    - ./tailscale:/var/lib/tailscale
+    - /dev/net/tun:/dev/net/tun
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: bridgecade-cloudflared
+    restart: unless-stopped
+    networks:
+    - bridgecade_web
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '5'
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - kill -0 1
+      interval: 30s
+      timeout: 5s
+      retries: 3
 networks:
   bridgecade_web:
     external: true
