@@ -24,6 +24,16 @@ set -euo pipefail
 # Docker image to watch
 A0_IMAGE="agent0ai/agent-zero:latest"
 
+# Block automatic MAJOR version upgrades (e.g. 1.x -> 2.x).
+# Per A0 guidance, major upgrades require a new Docker image + data migration and
+# should be applied manually after reviewing migration notes.
+# When "true", the script detects a major jump, logs + notifies, then exits WITHOUT
+# updating. Set to "false" to allow unattended major upgrades.
+BLOCK_MAJOR_UPGRADES=true
+
+# Host-side path to A0 settings.json (fallback for reading the running version)
+A0_HOST_SETTINGS_JSON="/opt/Synthphony/OrchestrAI/agentzero_data/settings.json"
+
 # Name of your running Agent Zero container
 A0_CONTAINER_NAME="orchestrai-agentzero"
 
@@ -259,6 +269,53 @@ preflight() {
 }
 
 # =============================================================================
+# MAJOR-VERSION GUARD HELPERS
+# =============================================================================
+
+# Echo the major version number from a string like "v1.20" / "2.1" (empty if unknown)
+version_major() {
+    echo "$1" | grep -oiE '^[vV]?[0-9]+' | grep -oE '[0-9]+$'
+}
+
+# Echo the currently-running A0 version (e.g. "v1.20") from settings.json
+get_current_a0_version() {
+    local ver=""
+    if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^${A0_CONTAINER_NAME}$"; then
+        ver=$(docker exec "${A0_CONTAINER_NAME}" bash -c 'cat /a0/usr/settings.json 2>/dev/null' 2>/dev/null \
+            | python3 -c "import json,sys; print(json.load(sys.stdin).get('version',''))" 2>/dev/null)
+    fi
+    if [[ -z "${ver}" && -f "${A0_HOST_SETTINGS_JSON}" ]]; then
+        ver=$(python3 -c "import json; print(json.load(open('${A0_HOST_SETTINGS_JSON}')).get('version',''))" 2>/dev/null)
+    fi
+    echo "${ver}"
+}
+
+# Echo the vX.Y registry tag whose digest matches the given manifest digest
+get_remote_a0_version() {
+    local target_digest="$1"
+    local page=1 found=""
+    while [[ -z "${found}" && ${page} -le 5 ]]; do
+        local resp
+        resp=$(curl -sf "https://hub.docker.com/v2/repositories/agent0ai/agent-zero/tags/?page_size=100&page=${page}" 2>/dev/null || true)
+        found=$(echo "${resp}" | python3 -c "
+import json, sys
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    sys.exit(0)
+target = sys.argv[1]
+for t in data.get('results', []):
+    if t.get('digest') == target:
+        name = t.get('name', '')
+        if name.lower().startswith('v') and any(c.isdigit() for c in name):
+            print(name); break
+" "${target_digest}" 2>/dev/null)
+        page=$((page + 1))
+    done
+    echo "${found}"
+}
+
+# =============================================================================
 # STEP 2: CHECK FOR UPDATE
 # =============================================================================
 
@@ -290,6 +347,28 @@ check_for_update() {
     fi
 
     log "UPDATE DETECTED! New image version available."
+
+    # ---- Major-version guard: never auto-apply a breaking major upgrade ----
+    if [[ "${BLOCK_MAJOR_UPGRADES}" == "true" ]]; then
+        local cur_ver cur_major new_manifest new_ver new_major
+        cur_ver=$(get_current_a0_version)
+        cur_major=$(version_major "${cur_ver}")
+        new_manifest=$(docker inspect --format '{{json .RepoDigests}}' "${A0_IMAGE}" 2>/dev/null \
+            | python3 -c "import json,sys; d=json.load(sys.stdin); print(d[0].split('@')[1] if d else '')" 2>/dev/null)
+        new_ver=$(get_remote_a0_version "${new_manifest}")
+        new_major=$(version_major "${new_ver}")
+        log "Version check: current=${cur_ver:-unknown} (major ${cur_major:-?}) -> new=${new_ver:-unknown} (major ${new_major:-?})"
+        if [[ -n "${cur_major}" && -n "${new_major}" && "${cur_major}" != "${new_major}" ]]; then
+            log "MAJOR VERSION UPGRADE DETECTED (${cur_ver} -> ${new_ver}). Skipping auto-update."
+            log "Major upgrades require a new Docker image + data migration (per A0 guidance)."
+            log "To proceed manually: review migration notes, then set BLOCK_MAJOR_UPGRADES=false."
+            notify "A0 Major Upgrade Held" "Detected ${cur_ver} -> ${new_ver}; auto-update skipped (major version)."
+            log "=== Auto-Update Check Complete (major upgrade held) ==="
+            exit 0
+        fi
+    fi
+    # ---- end major-version guard ----
+
     notify "A0 Update Available" "New version detected. Starting backup + update."
 }
 

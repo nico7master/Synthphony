@@ -113,6 +113,8 @@ services:
     - ./wmill_config:/root/.config/wmill
     - ${HDD_STORAGE_PATH:-/mnt/hdd/agentzero-storage}:/a0/hdd
     - /opt/Synthphony/MYestro/postiz/uploads:/a0/postiz-uploads
+    - /opt/Synthphony/OrchestrAI/agentzero_hf_cache:/root/.cache/huggingface
+    - /opt/Synthphony/OrchestrAI/agentzero_tmp:/a0/tmp
     labels:
       caddy: agentzero.${BASE_DOMAIN}
       caddy.reverse_proxy: '{{upstreams 80}}'

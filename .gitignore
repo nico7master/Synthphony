@@ -254,3 +254,9 @@ MYestro/postiz/
 
 # Tee test artifacts
 **/.tee_test
+
+# =============================================================================
+# Agent Zero runtime caches (added 2026-07-18)
+# =============================================================================
+OrchestrAI/agentzero_hf_cache/
+OrchestrAI/agentzero_tmp/
