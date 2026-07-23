@@ -3,7 +3,7 @@ services:
   openwebui:
     image: ghcr.io/open-webui/open-webui:latest
     container_name: orchestrai-openwebui
-    restart: unless-stopped
+    restart: always
     networks:
     - bridgecade_web
     environment:
@@ -35,7 +35,7 @@ services:
   windmill-db:
     image: postgres:16-alpine
     container_name: orchestrai-windmill-db
-    restart: unless-stopped
+    restart: always
     environment:
       POSTGRES_USER: windmill
       POSTGRES_PASSWORD: ${WINDMILL_DB_PASSWORD}
@@ -59,7 +59,7 @@ services:
   windmill:
     image: ghcr.io/windmill-labs/windmill:main
     container_name: orchestrai-windmill
-    restart: unless-stopped
+    restart: always
     depends_on:
       windmill-db:
         condition: service_started
@@ -96,7 +96,8 @@ services:
   agentzero:
     image: agent0ai/agent-zero:latest
     container_name: orchestrai-agentzero
-    restart: unless-stopped
+    mem_limit: 10g
+    restart: always
     networks:
     - bridgecade_web
     environment:
@@ -130,15 +131,16 @@ services:
     healthcheck:
       test:
       - CMD-SHELL
-      - curl --fail --silent --max-time 5 http://localhost/ >/dev/null 2>&1 || exit
+      - curl --fail --silent --max-time 10 http://localhost/ >/dev/null 2>&1 || exit
         1
-      interval: 10s
-      timeout: 5s
-      retries: 10
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
   ollama:
     image: ollama/ollama:latest
     container_name: orchestrai-ollama
-    restart: unless-stopped
+    restart: always
     networks:
     - bridgecade_web
     environment:
@@ -165,7 +167,7 @@ services:
     container_name: orchestrai-surrealdb
     user: 1001:1001
     command: start --log info --user root --pass ${SURREAL_PASSWORD} rocksdb:/mydata/mydatabase.db
-    restart: unless-stopped
+    restart: always
     networks:
     - default
     volumes:
@@ -180,7 +182,7 @@ services:
   open-notebook:
     image: lfnovo/open_notebook:v1-latest
     container_name: orchestrai-open-notebook
-    restart: unless-stopped
+    restart: always
     environment:
       API_URL: https://notebook.${BASE_DOMAIN}
       OPEN_NOTEBOOK_ENCRYPTION_KEY: ${OPENNOTEBOOK_ENCRYPTION_KEY}
@@ -224,7 +226,7 @@ services:
         SPACE_AGENT_VERSION: v0.66
     image: space-agent:latest
     container_name: orchestrai-spaceagent
-    restart: unless-stopped
+    restart: always
     networks:
     - default
     - bridgecade_web
@@ -258,7 +260,7 @@ services:
   omniroute:
     image: diegosouzapw/omniroute:latest
     container_name: orchestrai-omniroute
-    restart: unless-stopped
+    restart: always
     stop_grace_period: 40s
     networks:
     - default
@@ -300,7 +302,7 @@ services:
   languagetool:
     image: erikvl87/languagetool:latest
     container_name: orchestrai-languagetool
-    restart: unless-stopped
+    restart: always
     networks:
     - default
     - bridgecade_web

@@ -4,7 +4,7 @@ services:
   portainer:
     image: portainer/portainer-ce:latest
     container_name: metronomni-portainer
-    restart: unless-stopped
+    restart: always
     networks: [bridgecade_web]
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -28,7 +28,7 @@ services:
   uptimekuma:
     image: louislam/uptime-kuma:latest
     container_name: metronomni-uptimekuma
-    restart: unless-stopped
+    restart: always
     networks: [bridgecade_web]
     volumes:
       - ./uptime-kuma:/app/data
@@ -46,7 +46,7 @@ services:
   netdata:
     image: netdata/netdata:latest
     container_name: metronomni-netdata
-    restart: unless-stopped
+    restart: always
     networks: [bridgecade_web]
     cap_add: [SYS_PTRACE]
     security_opt: [apparmor:unconfined]

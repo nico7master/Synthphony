@@ -3,7 +3,7 @@ services:
   nextcloud-db:
     image: mariadb:latest
     container_name: myestro-nextcloud-db
-    restart: unless-stopped
+    restart: always
     command: --transaction-isolation=READ-COMMITTED --log-bin=binlog --binlog-format=ROW
     environment:
       MYSQL_DATABASE: nextcloud
@@ -29,7 +29,7 @@ services:
   nextcloud:
     image: nextcloud:latest
     container_name: myestro-nextcloud
-    restart: unless-stopped
+    restart: always
     depends_on:
     - nextcloud-db
     networks:
@@ -67,7 +67,7 @@ services:
   nextcloud-cron:
     image: nextcloud:latest
     container_name: myestro-nextcloud-cron
-    restart: unless-stopped
+    restart: always
     depends_on:
     - nextcloud
     networks:
@@ -88,7 +88,7 @@ services:
   solidtime-db:
     image: postgres:latest
     container_name: myestro-solidtime-db
-    restart: unless-stopped
+    restart: always
     environment:
       POSTGRES_DB: solidtime
       POSTGRES_USER: solidtime
@@ -114,7 +114,7 @@ services:
   solidtime-app:
     image: solidtime/solidtime:latest
     container_name: myestro-solidtime-app
-    restart: unless-stopped
+    restart: always
     user: 1000:1000
     environment:
       CONTAINER_MODE: http
@@ -150,7 +150,7 @@ services:
   solidtime-scheduler:
     image: solidtime/solidtime:latest
     container_name: myestro-solidtime-scheduler
-    restart: unless-stopped
+    restart: always
     user: 1000:1000
     environment:
       CONTAINER_MODE: scheduler
@@ -180,7 +180,7 @@ services:
   solidtime-queue:
     image: solidtime/solidtime:latest
     container_name: myestro-solidtime-queue
-    restart: unless-stopped
+    restart: always
     user: 1000:1000
     environment:
       CONTAINER_MODE: worker
@@ -211,7 +211,7 @@ services:
   homepage:
     image: ghcr.io/gethomepage/homepage:latest
     container_name: myestro-homepage
-    restart: unless-stopped
+    restart: always
     networks:
     - bridgecade_web
     environment:
@@ -239,7 +239,7 @@ services:
   postiz:
     image: ghcr.io/gitroomhq/postiz-app:latest
     container_name: myestro-postiz
-    restart: unless-stopped
+    restart: always
     networks:
     - default
     - bridgecade_web
@@ -296,7 +296,7 @@ services:
   postiz-postgres:
     image: postgres:17-alpine
     container_name: myestro-postiz-postgres
-    restart: unless-stopped
+    restart: always
     environment:
       POSTGRES_USER: postiz
       POSTGRES_PASSWORD: ${POSTIZ_DB_PASSWORD}
@@ -313,7 +313,7 @@ services:
   postiz-redis:
     image: redis:7-alpine
     container_name: myestro-postiz-redis
-    restart: unless-stopped
+    restart: always
     volumes:
     - ./postiz/redis:/data
     healthcheck:
@@ -327,14 +327,14 @@ services:
   postiz-temporal:
     image: temporalio/auto-setup:1.26
     container_name: myestro-postiz-temporal
-    restart: unless-stopped
+    restart: always
     depends_on:
       postiz-temporal-postgres:
         condition: service_healthy
       postiz-temporal-es:
         condition: service_healthy
     environment:
-      DB: postgres
+      DB: postgres12
       DB_PORT: 5432
       POSTGRES_USER: temporal
       POSTGRES_PWD: ${TEMPORAL_DB_PASSWORD}
@@ -345,24 +345,24 @@ services:
       ES_USER: elastic
       ES_PWD: ${TEMPORAL_ES_PASSWORD}
     volumes:
-    - ./postiz/temporal/config/dynamicconfig:/etc/temporal/config/dynamicconfig
+    - ./postiz/temporal/dynamicconfig:/etc/temporal/config/dynamicconfig
     healthcheck:
       test:
       - CMD-SHELL
-      - tctl --address localhost:7233 cluster health
+      - tctl --address postiz-temporal:7233 cluster health
       interval: 30s
       timeout: 10s
       retries: 5
   postiz-temporal-postgres:
-    image: postgres:17-alpine
+    image: postgres:16-alpine
     container_name: myestro-postiz-temporal-postgres
-    restart: unless-stopped
+    restart: always
     environment:
       POSTGRES_USER: temporal
       POSTGRES_PASSWORD: ${TEMPORAL_DB_PASSWORD}
       POSTGRES_DB: temporal
     volumes:
-    - ./postiz/temporal/postgres:/var/lib/postgresql/data
+    - ./postiz/temporal/postgres-data:/var/lib/postgresql/data
     healthcheck:
       test:
       - CMD-SHELL
@@ -371,9 +371,9 @@ services:
       timeout: 5s
       retries: 5
   postiz-temporal-es:
-    image: elasticsearch:8
+    image: elasticsearch:7.17.27
     container_name: myestro-postiz-temporal-es
-    restart: unless-stopped
+    restart: always
     environment:
       cluster.name: postiz-es-cluster
       discovery.type: single-node
@@ -381,11 +381,11 @@ services:
       ELASTIC_PASSWORD: ${TEMPORAL_ES_PASSWORD}
       ES_JAVA_OPTS: -Xms256m -Xmx256m
     volumes:
-    - ./postiz/temporal/es:/usr/share/elasticsearch/data
+    - ./postiz/temporal/es-data:/usr/share/elasticsearch/data
     healthcheck:
       test:
       - CMD-SHELL
-      - curl -f http://localhost:9200/_cluster/health || exit 1
+      - curl -f -u elastic:$$ELASTIC_PASSWORD http://localhost:9200/_cluster/health || exit 1
       interval: 30s
       timeout: 10s
       retries: 5

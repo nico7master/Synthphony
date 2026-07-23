@@ -3,7 +3,7 @@ services:
   caddy:
     image: lucaslorentz/caddy-docker-proxy:latest
     container_name: bridgecade-caddy
-    restart: unless-stopped
+    restart: always
     ports:
     - 80:80
     - 443:443
@@ -34,7 +34,7 @@ services:
   pihole:
     image: pihole/pihole:latest
     container_name: bridgecade-pihole
-    restart: unless-stopped
+    restart: always
     networks:
     - bridgecade_web
     ports:
@@ -74,7 +74,7 @@ services:
   wireguard:
     image: lscr.io/linuxserver/wireguard:latest
     container_name: bridgecade-wireguard
-    restart: unless-stopped
+    restart: always
     networks:
     - bridgecade_web
     cap_add:
@@ -113,7 +113,7 @@ services:
   cert_issuer:
     build: ./cert-issuer
     container_name: bridgecade-cert-issuer
-    restart: unless-stopped
+    restart: always
     networks:
     - bridgecade_web
     environment:
@@ -133,7 +133,7 @@ services:
   dns_registrar:
     build: ./dns-registrar
     container_name: bridgecade-dns-registrar
-    restart: unless-stopped
+    restart: always
     networks:
     - bridgecade_web
     environment:
@@ -151,7 +151,7 @@ services:
   tailscale:
     image: tailscale/tailscale:latest
     container_name: bridgecade-tailscale
-    restart: unless-stopped
+    restart: always
     environment:
       TS_ROUTES: ${LAN_NETWORK}
       TS_HOSTNAME: synthphony-bridgecade
@@ -165,7 +165,7 @@ services:
   cloudflared:
     image: cloudflare/cloudflared:latest
     container_name: bridgecade-cloudflared
-    restart: unless-stopped
+    restart: always
     networks:
     - bridgecade_web
     command: tunnel --no-autoupdate run
@@ -178,11 +178,13 @@ services:
         max-file: '5'
     healthcheck:
       test:
-      - CMD-SHELL
-      - kill -0 1
+      - CMD
+      - cloudflared
+      - version
       interval: 30s
-      timeout: 5s
+      timeout: 10s
       retries: 3
+      start_period: 10s
 networks:
   bridgecade_web:
     external: true
