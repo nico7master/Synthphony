@@ -21,10 +21,14 @@ echo ""
 ITEMS=$(ls -A /mnt/inspect/ 2>/dev/null | wc -l)
 sudo umount /mnt/inspect 2>/dev/null || true
 
-if [ "$ITEMS" -gt 0 ]; then
+if [ "$ITEMS" -gt 0 ] && [ "${1:-}" != "--force" ]; then
     echo "⚠️  /dev/sda2 has $ITEMS items. Review above before continuing."
-    echo "   Copy anything you need off it, then re-run with: $0 --force"
+    echo "   If disposable, re-run with: sudo bash $0 --force"
     exit 1
+fi
+
+if [ "${1:-}" = "--force" ] && [ "$ITEMS" -gt 0 ]; then
+    echo "⚠️  --force: proceeding despite $ITEMS items on /dev/sda2"
 fi
 
 echo "✅ /dev/sda2 appears empty. Proceeding to Phase 2."
