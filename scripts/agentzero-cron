@@ -1,0 +1,1 @@
+* * * * * /opt/Synthphony/scripts/agentzero-health-watchdog.sh >> /opt/Synthphony/scripts/agentzero-watchdog.log 2>&1

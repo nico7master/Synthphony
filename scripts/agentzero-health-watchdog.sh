@@ -12,13 +12,13 @@ health=$(docker inspect "$CONTAINER" --format='{{.State.Health.Status}}' 2>/dev/
 
 if [ "$health" != "unhealthy" ]; then
     echo "$(date '+%Y-%m-%d %H:%M:%S') healthy - resetting counter"
-    echo 0 > "$STATE_FILE"
+    echo 0 > "$STATE_FILE" 2>/dev/null
     exit 0
 fi
 
 count=$(cat "$STATE_FILE" 2>/dev/null || echo 0)
 count=$((count + 1))
-echo "$count" > "$STATE_FILE"
+echo "$count" > "$STATE_FILE" 2>/dev/null
 
 echo "$(date '+%Y-%m-%d %H:%M:%S') unhealthy (streak: $count)"
 
@@ -28,5 +28,5 @@ if [ "$count" -le "$MAX_SOFT_RESTARTS" ]; then
 else
     echo "$(date '+%Y-%m-%d %H:%M:%S') hard restart: docker restart $CONTAINER"
     docker restart "$CONTAINER" 2>&1
-    echo 0 > "$STATE_FILE"
+    echo 0 > "$STATE_FILE" 2>/dev/null
 fi
