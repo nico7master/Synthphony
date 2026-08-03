@@ -100,6 +100,12 @@ services:
     restart: always
     networks:
     - bridgecade_web
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+    extra_hosts:
+    - host.docker.internal:host-gateway
     environment:
       WINDMILL_BASE_URL: https://windmill.${BASE_DOMAIN}
       WINDMILL_URL: http://orchestrai-windmill:8000
@@ -107,6 +113,8 @@ services:
       SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
       A0_SELF_UPDATE_HEALTH_TIMEOUT_SECONDS: '300'
       REQUESTS_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
+      A0_SOCKETIO_PING_INTERVAL_SECONDS: 120
+      A0_SOCKETIO_PING_TIMEOUT_SECONDS: 300
     volumes:
     - /opt/Synthphony/OrchestrAI/agentzero_data:/a0/usr
     - /opt/Synthphony/OrchestrAI/agentzero_update_backups:/root/update-backups
