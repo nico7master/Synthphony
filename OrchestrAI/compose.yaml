@@ -113,7 +113,7 @@ services:
       SSL_CERT_FILE: /etc/ssl/certs/ca-certificates.crt
       A0_SELF_UPDATE_HEALTH_TIMEOUT_SECONDS: '300'
       REQUESTS_CA_BUNDLE: /etc/ssl/certs/ca-certificates.crt
-      A0_SOCKETIO_PING_INTERVAL_SECONDS: 120
+      A0_SOCKETIO_PING_INTERVAL_SECONDS: 25
       A0_SOCKETIO_PING_TIMEOUT_SECONDS: 300
     volumes:
     - /opt/Synthphony/OrchestrAI/agentzero_data:/a0/usr
