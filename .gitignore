@@ -260,3 +260,6 @@ MYestro/postiz/
 # =============================================================================
 OrchestrAI/agentzero_hf_cache/
 OrchestrAI/agentzero_tmp/
+
+# Local credentials doc - never sync (added 2026-08-28)
+CREDENTIALS.md
