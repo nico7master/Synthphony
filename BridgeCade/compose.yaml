@@ -156,6 +156,7 @@ services:
       TS_ROUTES: ${LAN_NETWORK}
       TS_HOSTNAME: synthphony-bridgecade
       TS_STATE_DIR: /var/lib/tailscale
+      TS_AUTHKEY: tskey-auth-kUYXvqKsHy11CNTRL-FYFY3eyGvJeWKQ4wkUmVKe7maU9bLGJw
     cap_add:
     - NET_ADMIN
     - SYS_MODULE
