@@ -1,6 +1,7 @@
 name: orchestrai
 services:
   openwebui:
+    mem_limit: 2g
     image: ghcr.io/open-webui/open-webui:latest
     container_name: orchestrai-openwebui
     restart: always
@@ -33,6 +34,7 @@ services:
       ollama:
         condition: service_started
   windmill-db:
+    mem_limit: 1g
     image: postgres:16-alpine
     container_name: orchestrai-windmill-db
     restart: always
@@ -57,6 +59,7 @@ services:
       start_period: 30s
     stop_grace_period: 60s
   windmill:
+    mem_limit: 1g
     image: ghcr.io/windmill-labs/windmill:main
     container_name: orchestrai-windmill
     restart: always
@@ -171,6 +174,7 @@ services:
       start_period: 30s
     stop_grace_period: 120s
   surrealdb:
+    mem_limit: 1g
     image: surrealdb/surrealdb:v2
     container_name: orchestrai-surrealdb
     user: 1001:1001
@@ -188,6 +192,7 @@ services:
         max-size: 10m
         max-file: '5'
   open-notebook:
+    mem_limit: 1.5g
     image: lfnovo/open_notebook:v1-latest
     container_name: orchestrai-open-notebook
     restart: always
@@ -266,6 +271,7 @@ services:
       retries: 5
       start_period: 60s
   omniroute:
+    mem_limit: 2g
     image: diegosouzapw/omniroute:latest
     container_name: orchestrai-omniroute
     restart: always
@@ -308,6 +314,7 @@ services:
       retries: 3
       start_period: 30s
   languagetool:
+    mem_limit: 3g
     image: erikvl87/languagetool:latest
     container_name: orchestrai-languagetool
     restart: always
