@@ -263,3 +263,9 @@ OrchestrAI/agentzero_tmp/
 
 # Local credentials doc - never sync (added 2026-08-28)
 CREDENTIALS.md
+
+# =============================================================================
+# ADDITIONAL PATTERNS (added 2026-09-07)
+# =============================================================================
+# Backup copies of tracked files (timestamped .bak files)
+*.bak-*

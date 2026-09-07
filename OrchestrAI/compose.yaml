@@ -34,7 +34,7 @@ services:
       ollama:
         condition: service_started
   windmill-db:
-    mem_limit: 1g
+    mem_limit: 2g
     image: postgres:16-alpine
     container_name: orchestrai-windmill-db
     restart: always
@@ -59,7 +59,7 @@ services:
       start_period: 30s
     stop_grace_period: 60s
   windmill:
-    mem_limit: 1g
+    mem_limit: 3g
     image: ghcr.io/windmill-labs/windmill:main
     container_name: orchestrai-windmill
     restart: always
@@ -99,7 +99,7 @@ services:
   agentzero:
     image: agent0ai/agent-zero:latest
     container_name: orchestrai-agentzero
-    mem_limit: 10g
+    mem_limit: 20g
     restart: always
     networks:
     - bridgecade_web
@@ -142,12 +142,12 @@ services:
     healthcheck:
       test:
       - CMD-SHELL
-      - curl --fail --silent --max-time 10 http://localhost/ >/dev/null 2>&1 || exit
+      - curl --fail --silent --max-time 30 http://localhost/ >/dev/null 2>&1 || exit
         1
-      interval: 15s
-      timeout: 10s
-      retries: 5
-      start_period: 120s
+      interval: 30s
+      timeout: 30s
+      retries: 10
+      start_period: 180s
   ollama:
     image: ollama/ollama:latest
     container_name: orchestrai-ollama
@@ -174,7 +174,7 @@ services:
       start_period: 30s
     stop_grace_period: 120s
   surrealdb:
-    mem_limit: 1g
+    mem_limit: 768m
     image: surrealdb/surrealdb:v2
     container_name: orchestrai-surrealdb
     user: 1001:1001
@@ -192,7 +192,7 @@ services:
         max-size: 10m
         max-file: '5'
   open-notebook:
-    mem_limit: 1.5g
+    mem_limit: 2g
     image: lfnovo/open_notebook:v1-latest
     container_name: orchestrai-open-notebook
     restart: always
@@ -324,8 +324,8 @@ services:
     environment:
       langtool_port: "8010"
       langtool_allowOrigin: "*"
-      Java_Xms: "512m"
-      Java_Xmx: "2g"
+      Java_Xms: "256m"
+      Java_Xmx: "1536m"
       langtool_pipelinePrewarming: "true"
       langtool_maxTextLength: "10000"
     volumes:

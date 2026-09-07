@@ -1,17 +1,19 @@
 #!/bin/bash
-# Agent Zero Health Watchdog
-# Restarts run_ui service when container becomes unhealthy
-# Cron: * * * * * /opt/Synthphony/scripts/agentzero-health-watchdog.sh >> /opt/Synthphony/scripts/agentzero-watchdog.log 2>&1
+# Agent Zero Health Watchdog v2 (2026-09-06)
+# Only restarts after 10 consecutive minutes of unhealthy status.
+# Never hard-restarts the container automatically.
 
 CONTAINER="orchestrai-agentzero"
 STATE_FILE="$HOME/agentzero-unhealthy-count"
 LOG_FILE="/opt/Synthphony/scripts/agentzero-watchdog.log"
-MAX_SOFT_RESTARTS=2  # supervisor restarts before full container restart
+MAX_SOFT_RESTARTS=10  # consecutive unhealthy minutes before supervisor restart
 
 health=$(docker inspect "$CONTAINER" --format='{{.State.Health.Status}}' 2>/dev/null)
 
 if [ "$health" != "unhealthy" ]; then
-    echo "$(date '+%Y-%m-%d %H:%M:%S') healthy - resetting counter"
+    if [ -s "$STATE_FILE" ] && [ "$(cat "$STATE_FILE" 2>/dev/null)" != "0" ]; then
+        echo "$(date '+%Y-%m-%d %H:%M:%S') recovered - resetting counter"
+    fi
     echo 0 > "$STATE_FILE" 2>/dev/null
     exit 0
 fi
@@ -22,11 +24,10 @@ echo "$count" > "$STATE_FILE" 2>/dev/null
 
 echo "$(date '+%Y-%m-%d %H:%M:%S') unhealthy (streak: $count)"
 
-if [ "$count" -le "$MAX_SOFT_RESTARTS" ]; then
-    echo "$(date '+%Y-%m-%d %H:%M:%S') soft restart: supervisorctl restart run_ui"
-    docker exec "$CONTAINER" supervisorctl restart run_ui 2>&1
-else
-    echo "$(date '+%Y-%m-%d %H:%M:%S') hard restart: docker restart $CONTAINER"
-    docker restart "$CONTAINER" 2>&1
-    echo 0 > "$STATE_FILE" 2>/dev/null
+if [ "$count" -lt "$MAX_SOFT_RESTARTS" ]; then
+    exit 0
 fi
+
+echo "$(date '+%Y-%m-%d %H:%M:%S') soft restart after streak $MAX_SOFT_RESTARTS: supervisorctl restart run_ui"
+docker exec "$CONTAINER" supervisorctl restart run_ui 2>&1
+echo 0 > "$STATE_FILE" 2>/dev/null
